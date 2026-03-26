@@ -82,19 +82,27 @@ class SM_DB_Finance {
         if ($cached !== false && empty($filters['no_cache'])) return $cached;
 
         $stats = array();
+        $params = [];
 
         $where_member = "1=1";
         if ($target_gov) {
-            $where_member = $wpdb->prepare("governorate = %s", $target_gov);
+            $where_member = "governorate = %s";
+            $params[] = $target_gov;
         } elseif (!$has_full_access) {
             if ($my_gov) {
-                $where_member = $wpdb->prepare("governorate = %s", $my_gov);
+                $where_member = "governorate = %s";
+                $params[] = $my_gov;
             } else {
                 $where_member = "1=0";
             }
         }
 
-        $stats['total_members'] = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}sm_members WHERE $where_member");
+        $query_members = "SELECT COUNT(*) FROM {$wpdb->prefix}sm_members WHERE $where_member";
+        if (!empty($params)) {
+            $stats['total_members'] = $wpdb->get_var($wpdb->prepare($query_members, ...$params));
+        } else {
+            $stats['total_members'] = $wpdb->get_var($query_members);
+        }
         $stats['total_officers'] = count(SM_DB_Members::get_staff(['number' => -1]));
 
         // Total Board Members
@@ -110,80 +118,115 @@ class SM_DB_Finance {
         // Total Revenue
         $join_member_rev = "";
         $where_rev = "1=1";
+        $rev_params = [];
         if (!$has_full_access) {
             if ($my_gov) {
                 $join_member_rev = "JOIN {$wpdb->prefix}sm_members m ON p.member_id = m.id";
-                $where_rev = $wpdb->prepare("m.governorate = %s", $my_gov);
+                $where_rev = "m.governorate = %s";
+                $rev_params[] = $my_gov;
             } else {
                 $where_rev = "1=0";
             }
         }
-        $stats['total_revenue'] = $wpdb->get_var("SELECT SUM(amount) FROM {$wpdb->prefix}sm_payments p $join_member_rev WHERE $where_rev") ?: 0;
+        $query_rev = "SELECT SUM(amount) FROM {$wpdb->prefix}sm_payments p $join_member_rev WHERE $where_rev";
+        if (!empty($rev_params)) {
+            $stats['total_revenue'] = $wpdb->get_var($wpdb->prepare($query_rev, ...$rev_params)) ?: 0;
+        } else {
+            $stats['total_revenue'] = $wpdb->get_var($query_rev) ?: 0;
+        }
 
         // Financial Trends (Last 30 Days)
         $join_member = "";
         $where_finance = "payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        $trend_params = [];
         if (!$has_full_access) {
             if ($my_gov) {
                 $join_member = "JOIN {$wpdb->prefix}sm_members m ON p.member_id = m.id";
-                $where_finance .= $wpdb->prepare(" AND m.governorate = %s", $my_gov);
+                $where_finance .= " AND m.governorate = %s";
+                $trend_params[] = $my_gov;
             } else {
                 $where_finance .= " AND 1=0";
             }
         }
 
-        $stats['financial_trends'] = $wpdb->get_results("
+        $query_trends = "
             SELECT DATE(payment_date) as date, SUM(amount) as total
             FROM {$wpdb->prefix}sm_payments p
             $join_member
             WHERE $where_finance
             GROUP BY DATE(payment_date)
             ORDER BY date ASC
-        ");
+        ";
+        if (!empty($trend_params)) {
+            $stats['financial_trends'] = $wpdb->get_results($wpdb->prepare($query_trends, ...$trend_params));
+        } else {
+            $stats['financial_trends'] = $wpdb->get_results($query_trends);
+        }
 
         // Specialization Distribution
-        $stats['specializations'] = $wpdb->get_results("
+        $query_specs = "
             SELECT specialization, COUNT(*) as count
             FROM {$wpdb->prefix}sm_members
             WHERE specialization != '' AND $where_member
             GROUP BY specialization
-        ");
+        ";
+        if (!empty($params)) {
+            $stats['specializations'] = $wpdb->get_results($wpdb->prepare($query_specs, ...$params));
+        } else {
+            $stats['specializations'] = $wpdb->get_results($query_specs);
+        }
 
         // Advanced Stats
-        $stats['total_service_requests'] = $wpdb->get_var("
+        $query_service_reqs = "
             SELECT COUNT(*) FROM {$wpdb->prefix}sm_service_requests r
             JOIN {$wpdb->prefix}sm_members m ON r.member_id = m.id
             WHERE $where_member
-        ") ?: 0;
-
-        $stats['total_executed_requests'] = $wpdb->get_var("
+        ";
+        $query_executed_reqs = "
             SELECT COUNT(*) FROM {$wpdb->prefix}sm_service_requests r
             JOIN {$wpdb->prefix}sm_members m ON r.member_id = m.id
             WHERE r.status = 'approved' AND $where_member
-        ") ?: 0;
-
-        $stats['total_update_requests'] = $wpdb->get_var("
+        ";
+        $query_update_reqs = "
             SELECT COUNT(*) FROM {$wpdb->prefix}sm_update_requests r
             JOIN {$wpdb->prefix}sm_members m ON r.member_id = m.id
             WHERE $where_member
-        ") ?: 0;
-
-        $stats['total_membership_requests'] = $wpdb->get_var("
+        ";
+        $query_membership_reqs = "
             SELECT COUNT(*) FROM {$wpdb->prefix}sm_membership_requests
             WHERE $where_member
-        ") ?: 0;
+        ";
+
+        if (!empty($params)) {
+            $stats['total_service_requests'] = $wpdb->get_var($wpdb->prepare($query_service_reqs, ...$params)) ?: 0;
+            $stats['total_executed_requests'] = $wpdb->get_var($wpdb->prepare($query_executed_reqs, ...$params)) ?: 0;
+            $stats['total_update_requests'] = $wpdb->get_var($wpdb->prepare($query_update_reqs, ...$params)) ?: 0;
+            $stats['total_membership_requests'] = $wpdb->get_var($wpdb->prepare($query_membership_reqs, ...$params)) ?: 0;
+        } else {
+            $stats['total_service_requests'] = $wpdb->get_var($query_service_reqs) ?: 0;
+            $stats['total_executed_requests'] = $wpdb->get_var($query_executed_reqs) ?: 0;
+            $stats['total_update_requests'] = $wpdb->get_var($query_update_reqs) ?: 0;
+            $stats['total_membership_requests'] = $wpdb->get_var($query_membership_reqs) ?: 0;
+        }
 
         $stats['total_requests'] = intval($stats['total_service_requests']) + intval($stats['total_update_requests']) + intval($stats['total_membership_requests']);
 
-        $stats['total_practice_licenses'] = $wpdb->get_var("
+        $query_practice = "
             SELECT COUNT(*) FROM {$wpdb->prefix}sm_members
             WHERE license_number != '' AND $where_member
-        ") ?: 0;
-
-        $stats['total_facility_licenses'] = $wpdb->get_var("
+        ";
+        $query_facility = "
             SELECT COUNT(*) FROM {$wpdb->prefix}sm_members
             WHERE facility_number != '' AND $where_member
-        ") ?: 0;
+        ";
+
+        if (!empty($params)) {
+            $stats['total_practice_licenses'] = $wpdb->get_var($wpdb->prepare($query_practice, ...$params)) ?: 0;
+            $stats['total_facility_licenses'] = $wpdb->get_var($wpdb->prepare($query_facility, ...$params)) ?: 0;
+        } else {
+            $stats['total_practice_licenses'] = $wpdb->get_var($query_practice) ?: 0;
+            $stats['total_facility_licenses'] = $wpdb->get_var($query_facility) ?: 0;
+        }
 
         // Work permits (assumed same as practice licenses in this context)
         $stats['total_work_permits'] = $stats['total_practice_licenses'];

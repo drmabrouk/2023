@@ -444,7 +444,7 @@ $survey_nonce = wp_create_nonce('sm_survey_action');
         fd.append('survey_id', SID);
         fd.append('assignment_id', AID);
         fd.append('responses', JSON.stringify(answers));
-        fd.append('nonce', '<?php echo $survey_nonce; ?>');
+        fd.append('nonce', '<?php echo $nonce; ?>');
 
         fetch(ajaxurl, { method: 'POST', body: fd }).then(r => r.json()).then(res => {
             if (res.success) {
