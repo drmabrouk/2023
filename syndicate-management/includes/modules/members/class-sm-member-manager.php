@@ -283,6 +283,13 @@ class SM_Member_Manager {
         if (!empty($role) && (current_user_can('sm_full_access') || current_user_can('manage_options'))) {
             $u = new WP_User($uid);
             $u->set_role($role);
+
+            if (isset($_POST['governorate'])) {
+                update_user_meta($uid, 'sm_governorate', sanitize_text_field($_POST['governorate']));
+            }
+            if (isset($_POST['rank'])) {
+                update_user_meta($uid, 'sm_rank', sanitize_text_field($_POST['rank']));
+            }
         }
 
         SM_DB::update_member($mid, ['email' => $email]);
@@ -465,12 +472,12 @@ class SM_Member_Manager {
             $u->set_role($role);
 
             // 2. Update User Meta (Unified Account/Member Meta)
-            update_user_meta($uid, 'sm_syndicateMemberIdAttr', sanitize_text_field($_POST['officer_id']));
-            update_user_meta($uid, 'sm_phone', sanitize_text_field($_POST['phone']));
-            update_user_meta($uid, 'sm_governorate', sanitize_text_field($_POST['governorate']));
-            update_user_meta($uid, 'sm_account_status', sanitize_text_field($_POST['account_status']));
+            if (isset($_POST['officer_id'])) update_user_meta($uid, 'sm_syndicateMemberIdAttr', sanitize_text_field($_POST['officer_id']));
+            if (isset($_POST['phone'])) update_user_meta($uid, 'sm_phone', sanitize_text_field($_POST['phone']));
+            if (isset($_POST['governorate'])) update_user_meta($uid, 'sm_governorate', sanitize_text_field($_POST['governorate']));
+            if (isset($_POST['account_status'])) update_user_meta($uid, 'sm_account_status', sanitize_text_field($_POST['account_status']));
 
-            if (!empty($_POST['rank'])) {
+            if (isset($_POST['rank'])) {
                 update_user_meta($uid, 'sm_rank', sanitize_text_field($_POST['rank']));
             }
 

@@ -333,11 +333,25 @@ if ($import_results) {
                     <?php if (current_user_can('manage_options')): ?>
                     <div class="sm-form-group">
                         <label class="sm-label">الدور / الصلاحيات:</label>
-                        <select name="role" id="acc_role" class="sm-select">
+                        <select name="role" id="acc_role" class="sm-select" onchange="smToggleAccountRank(this)">
                             <option value="sm_member">عضو نقابة (افتراضي)</option>
                             <option value="sm_branch_officer">مسؤول نقابة</option>
                             <option value="sm_general_officer">مسؤول النقابة العامة</option>
                             <option value="administrator">مدير نظام</option>
+                        </select>
+                    </div>
+                    <div class="sm-form-group" id="acc_gov_group" style="display:none;">
+                        <label class="sm-label">الفرع الملحق به:</label>
+                        <select name="governorate" id="acc_governorate" class="sm-select">
+                            <option value="">-- اختر الفرع --</option>
+                            <?php foreach(SM_DB::get_branches_data() as $db) echo "<option value='".esc_attr($db->slug)."'>".esc_html($db->name)."</option>"; ?>
+                        </select>
+                    </div>
+                    <div class="sm-form-group" id="acc_rank_group" style="display:none;">
+                        <label class="sm-label">الرتبة / المسمى النقابي:</label>
+                        <select name="rank" id="acc_rank" class="sm-select">
+                            <option value="">-- اختر الرتبة --</option>
+                            <?php foreach(SM_Settings::get_professional_grades() as $rk => $rv) echo "<option value='".esc_attr($rk)."'>".esc_html($rv)."</option>"; ?>
                         </select>
                     </div>
                     <?php endif; ?>
@@ -410,24 +424,44 @@ if ($import_results) {
             document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = master.checked);
         };
 
+        window.smToggleAccountRank = function(roleSelect) {
+            const rankGroup = document.getElementById('acc_rank_group');
+            const govGroup = document.getElementById('acc_gov_group');
+            if (roleSelect.value === 'sm_member') {
+                rankGroup.style.display = 'none';
+                govGroup.style.display = 'none';
+            } else {
+                rankGroup.style.display = 'block';
+                govGroup.style.display = 'block';
+            }
+        };
+
         window.smOpenMemberAccountModal = function(data) {
             const mid = document.getElementById('acc_member_id');
             const uid = document.getElementById('acc_wp_user_id');
             const name = document.getElementById('acc_member_name');
             const email = document.getElementById('acc_email');
+            const roleSelect = document.getElementById('acc_role');
+            const govSelect = document.getElementById('acc_governorate');
+            const rankSelect = document.getElementById('acc_rank');
 
             if (mid) mid.value = data.id || '';
             if (uid) uid.value = data.wp_user_id || '';
             if (name) name.innerText = data.name || '';
             if (email) email.value = data.email || '';
 
-            const roleSelect = document.getElementById('acc_role');
             if (roleSelect && data.wp_user_id) {
                 const action = 'sm_get_user_role';
-                fetch(ajaxurl + '?action=' + action + '&user_id=' + data.wp_user_id)
+                fetch(ajaxurl + '?action=' + action + '&user_id=' + data.wp_user_id + '&nonce=<?php echo wp_create_nonce("sm_admin_action"); ?>')
                 .then(r => r.json()).then(res => {
-                    if (res.success && res.data && res.data.role) roleSelect.value = res.data.role;
-                    else smHandleAjaxError(res);
+                    if (res.success && res.data) {
+                        roleSelect.value = res.data.role || 'sm_member';
+                        if (govSelect) govSelect.value = res.data.governorate || '';
+                        if (rankSelect) rankSelect.value = res.data.rank || '';
+                        smToggleAccountRank(roleSelect);
+                    } else if (!res.success) {
+                        smHandleAjaxError(res);
+                    }
                 }).catch(err => smHandleAjaxError(err));
             }
 

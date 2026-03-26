@@ -910,10 +910,10 @@ $user = wp_get_current_user();
 $roles = (array)$user->roles;
 $user_role = reset($roles); // Primary role
 
-$is_admin = in_array('administrator', $roles) || current_user_can('manage_options');
-$is_general_officer = in_array('sm_general_officer', $roles);
-$is_branch_officer = in_array('sm_branch_officer', $roles);
-$is_member = in_array('sm_member', $roles);
+$is_admin = current_user_can('manage_options');
+$is_general_officer = current_user_can('sm_full_access') && !$is_admin;
+$is_branch_officer = current_user_can('sm_branch_access') && !current_user_can('sm_full_access');
+$is_member = !current_user_can('sm_branch_access') && !current_user_can('sm_full_access');
 
 $is_restricted = $is_member;
 $default_tab = $is_restricted ? 'my-profile' : 'summary';
@@ -1255,25 +1255,25 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     break;
 
                 case 'finance':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if (SM_Settings::can_role_access($user_role, 'finance')) {
                         include SM_PLUGIN_DIR . 'templates/admin-finance.php';
                     }
                     break;
 
                 case 'financial-logs':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if (SM_Settings::can_role_access($user_role, 'finance')) {
                         include SM_PLUGIN_DIR . 'templates/admin-financial-logs.php';
                     }
                     break;
 
                 case 'practice-licenses':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if (SM_Settings::can_role_access($user_role, 'licenses')) {
                         include SM_PLUGIN_DIR . 'templates/admin-practice-licenses.php';
                     }
                     break;
 
                 case 'facility-licenses':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if (SM_Settings::can_role_access($user_role, 'licenses')) {
                         include SM_PLUGIN_DIR . 'templates/admin-facility-licenses.php';
                     }
                     break;
@@ -1303,9 +1303,9 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
 
 
                 case 'surveys':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if (SM_Settings::can_role_access($user_role, 'education') && ($is_admin || $is_general_officer || $is_branch_officer)) {
                         include SM_PLUGIN_DIR . 'templates/admin-surveys.php';
-                    } elseif ($is_syndicate_member || $is_member) {
+                    } elseif ($is_member) {
                         echo '<div class="sm-member-surveys-view" style="background:#fff; padding: 15px; border-radius:12px; border:1px solid #e2e8f0; min-height:400px;">';
                         echo '<h2 style="margin:0 0 10px 0; font-weight:800; color:var(--sm-dark-color);">استطلاعات الرأي والبيانات</h2>';
                         echo '<p style="color:#64748b; margin-bottom: 15px; font-size:14px;">يرجى المشاركة في الاستطلاعات المتاحة لتحسين جودة الخدمات النقابية.</p>';
@@ -1320,25 +1320,25 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
 
 
                 case 'global-archive':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if (SM_Settings::can_role_access($user_role, 'archive')) {
                         include SM_PLUGIN_DIR . 'templates/admin-global-archive.php';
                     }
                     break;
 
                 case 'branches':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if ($is_admin || $is_general_officer) {
                         include SM_PLUGIN_DIR . 'templates/admin-branches.php';
                     }
                     break;
 
                 case 'test-questions':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if ($is_admin || $is_general_officer) {
                         include SM_PLUGIN_DIR . 'templates/admin-surveys.php';
                     }
                     break;
 
                 case 'advanced-settings':
-                    if ($is_admin || $is_sys_admin) {
+                    if ($is_admin) {
                         $sub = $_GET['sub'] ?? 'staff';
                         ?>
                         <div class="sm-tabs-wrapper" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">
@@ -1891,7 +1891,7 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
 
 
                 case 'global-settings':
-                    if ($is_admin || $is_sys_admin || $is_syndicate_admin) {
+                    if ($is_admin || $is_general_officer) {
                         $sub = $_GET['sub'] ?? 'init';
                         ?>
                         <div class="sm-tabs-wrapper" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">
