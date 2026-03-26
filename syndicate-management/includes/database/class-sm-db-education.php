@@ -16,6 +16,13 @@ class SM_DB_Education {
             'max_attempts' => intval($data['max_attempts'] ?? 1),
             'pass_score' => intval($data['pass_score'] ?? 50),
             'branch' => sanitize_text_field($data['branch'] ?? 'all'),
+            'start_time' => !empty($data['start_time']) ? sanitize_text_field($data['start_time']) : null,
+            'end_time' => !empty($data['end_time']) ? sanitize_text_field($data['end_time']) : null,
+            'show_results' => intval($data['show_results'] ?? 1),
+            'random_order' => intval($data['random_order'] ?? 0),
+            'randomize_answers' => intval($data['randomize_answers'] ?? 0),
+            'lock_navigation' => intval($data['lock_navigation'] ?? 0),
+            'auto_grade' => intval($data['auto_grade'] ?? 1),
             'status' => 'active',
             'created_by' => get_current_user_id(),
             'created_at' => current_time('mysql')
@@ -25,7 +32,7 @@ class SM_DB_Education {
 
     public static function update_survey($id, $data) {
         global $wpdb;
-        return $wpdb->update("{$wpdb->prefix}sm_surveys", array(
+        $update = array(
             'title' => sanitize_text_field($data['title']),
             'recipients' => sanitize_text_field($data['recipients']),
             'specialty' => sanitize_text_field($data['specialty']),
@@ -35,7 +42,17 @@ class SM_DB_Education {
             'pass_score' => intval($data['pass_score']),
             'branch' => sanitize_text_field($data['branch'] ?? 'all'),
             'status' => sanitize_text_field($data['status'] ?? 'active')
-        ), ['id' => intval($id)]);
+        );
+
+        if(isset($data['start_time'])) $update['start_time'] = !empty($data['start_time']) ? sanitize_text_field($data['start_time']) : null;
+        if(isset($data['end_time'])) $update['end_time'] = !empty($data['end_time']) ? sanitize_text_field($data['end_time']) : null;
+        if(isset($data['show_results'])) $update['show_results'] = intval($data['show_results']);
+        if(isset($data['random_order'])) $update['random_order'] = intval($data['random_order']);
+        if(isset($data['randomize_answers'])) $update['randomize_answers'] = intval($data['randomize_answers']);
+        if(isset($data['lock_navigation'])) $update['lock_navigation'] = intval($data['lock_navigation']);
+        if(isset($data['auto_grade'])) $update['auto_grade'] = intval($data['auto_grade']);
+
+        return $wpdb->update("{$wpdb->prefix}sm_surveys", $update, ['id' => intval($id)]);
     }
 
     public static function add_question($data) {
@@ -44,9 +61,13 @@ class SM_DB_Education {
             'test_id' => intval($data['test_id']),
             'question_text' => sanitize_textarea_field($data['question_text']),
             'question_type' => sanitize_text_field($data['question_type'] ?? 'mcq'),
-            'options' => json_encode($data['options'] ?? []),
+            'options' => is_array($data['options']) ? json_encode($data['options']) : $data['options'],
             'correct_answer' => sanitize_text_field($data['correct_answer']),
             'points' => intval($data['points'] ?? 1),
+            'time_limit' => intval($data['time_limit'] ?? 0),
+            'media_url' => esc_url_raw($data['media_url'] ?? ''),
+            'media_type' => sanitize_text_field($data['media_type'] ?? ''),
+            'extra_data' => !empty($data['extra_data']) ? (is_array($data['extra_data']) ? json_encode($data['extra_data']) : $data['extra_data']) : null,
             'topic' => sanitize_text_field($data['topic'] ?? ''),
             'difficulty' => sanitize_text_field($data['difficulty'] ?? 'medium'),
             'sort_order' => intval($data['sort_order'] ?? 0)
@@ -72,7 +93,7 @@ class SM_DB_Education {
         // Get surveys targeted by role/specialty AND branch OR specifically assigned to this user
         $my_gov = get_user_meta($user_id, 'sm_governorate', true);
 
-        $query = "SELECT s.* FROM {$wpdb->prefix}sm_surveys s
+        $query = "SELECT s.*, a.id as assignment_id, a.status as assignment_status FROM {$wpdb->prefix}sm_surveys s
                   LEFT JOIN {$wpdb->prefix}sm_test_assignments a ON s.id = a.test_id AND a.user_id = %d
                   WHERE s.status = 'active'
                   AND (

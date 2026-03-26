@@ -111,6 +111,13 @@ class SM_Activator {
             max_attempts int DEFAULT 1,
             pass_score int DEFAULT 50,
             branch varchar(50) DEFAULT 'all',
+            start_time datetime DEFAULT NULL,
+            end_time datetime DEFAULT NULL,
+            show_results tinyint(1) DEFAULT 1,
+            random_order tinyint(1) DEFAULT 0,
+            randomize_answers tinyint(1) DEFAULT 0,
+            lock_navigation tinyint(1) DEFAULT 0,
+            auto_grade tinyint(1) DEFAULT 1,
             status enum('active', 'completed', 'cancelled') DEFAULT 'active',
             created_by bigint(20),
             created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -124,10 +131,14 @@ class SM_Activator {
             id mediumint(9) NOT NULL AUTO_INCREMENT,
             test_id mediumint(9) NOT NULL,
             question_text text NOT NULL,
-            question_type enum('mcq', 'true_false', 'short_answer') DEFAULT 'mcq',
+            question_type varchar(50) DEFAULT 'mcq',
             options text,
             correct_answer text,
             points int DEFAULT 1,
+            time_limit int DEFAULT 0,
+            media_url text,
+            media_type varchar(20),
+            extra_data text,
             topic varchar(100),
             difficulty enum('easy', 'medium', 'hard') DEFAULT 'medium',
             sort_order int DEFAULT 0,
@@ -460,6 +471,42 @@ class SM_Activator {
             KEY status (status)
         ) $charset_collate;\n";
 
+        // Student Groups Table
+        $table_name = $wpdb->prefix . 'sm_test_groups';
+        $sql .= "CREATE TABLE $table_name (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text,
+            branch varchar(50) DEFAULT 'all',
+            created_by bigint(20),
+            created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            PRIMARY KEY  (id)
+        ) $charset_collate;\n";
+
+        // Group Members Table
+        $table_name = $wpdb->prefix . 'sm_test_group_members';
+        $sql .= "CREATE TABLE $table_name (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            group_id mediumint(9) NOT NULL,
+            user_id bigint(20) NOT NULL,
+            PRIMARY KEY  (id),
+            KEY group_id (group_id),
+            KEY user_id (user_id)
+        ) $charset_collate;\n";
+
+        // Group Assignments Table
+        $table_name = $wpdb->prefix . 'sm_test_group_assignments';
+        $sql .= "CREATE TABLE $table_name (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            test_id mediumint(9) NOT NULL,
+            group_id mediumint(9) NOT NULL,
+            assigned_by bigint(20),
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY test_id (test_id),
+            KEY group_id (group_id)
+        ) $charset_collate;\n";
+
         // Branches Table
         $table_name = $wpdb->prefix . 'sm_branches_data';
         $sql .= "CREATE TABLE $table_name (
@@ -502,6 +549,7 @@ class SM_Activator {
         self::fix_services_schema();
         self::fix_service_requests_schema();
         self::fix_surveys_schema();
+        self::fix_test_questions_schema();
         self::fix_test_monitoring_schema();
         self::fix_alerts_schema();
         self::fix_membership_requests_schema();
@@ -1014,6 +1062,32 @@ class SM_Activator {
         }
     }
 
+    private static function fix_test_questions_schema() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'sm_test_questions';
+
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+            return;
+        }
+
+        $cols = [
+            'time_limit' => "int DEFAULT 0 AFTER points",
+            'media_url' => "text AFTER time_limit",
+            'media_type' => "varchar(20) AFTER media_url",
+            'extra_data' => "text AFTER media_type"
+        ];
+
+        foreach ($cols as $col => $def) {
+            $exists = $wpdb->get_results($wpdb->prepare("SHOW COLUMNS FROM $table_name LIKE %s", $col));
+            if (empty($exists)) {
+                $wpdb->query("ALTER TABLE $table_name ADD $col $def");
+            }
+        }
+
+        // Also ensure question_type can handle new types
+        $wpdb->query("ALTER TABLE $table_name MODIFY question_type varchar(50) DEFAULT 'mcq'");
+    }
+
     private static function fix_surveys_schema() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'sm_surveys';
@@ -1028,7 +1102,14 @@ class SM_Activator {
             'time_limit' => "int DEFAULT 30 AFTER test_type",
             'max_attempts' => "int DEFAULT 1 AFTER time_limit",
             'pass_score' => "int DEFAULT 50 AFTER max_attempts",
-            'branch' => "varchar(50) DEFAULT 'all' AFTER pass_score"
+            'branch' => "varchar(50) DEFAULT 'all' AFTER pass_score",
+            'start_time' => "datetime DEFAULT NULL AFTER branch",
+            'end_time' => "datetime DEFAULT NULL AFTER start_time",
+            'show_results' => "tinyint(1) DEFAULT 1 AFTER end_time",
+            'random_order' => "tinyint(1) DEFAULT 0 AFTER show_results",
+            'randomize_answers' => "tinyint(1) DEFAULT 0 AFTER random_order",
+            'lock_navigation' => "tinyint(1) DEFAULT 0 AFTER randomize_answers",
+            'auto_grade' => "tinyint(1) DEFAULT 1 AFTER lock_navigation"
         ];
 
         foreach ($cols as $col => $def) {
