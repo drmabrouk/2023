@@ -97,10 +97,85 @@ class SM_Auth {
             </div>';
         }
         $user = wp_get_current_user();
+        $is_restricted = !current_user_can('sm_branch_access') && !current_user_can('sm_full_access');
         $greeting = ((int)current_time('G') >= 5 && (int)current_time('G') < 12) ? 'صباح الخير' : 'مساء الخير';
         ob_start();
         ?>
-        <div class="sm-topbar-user-wrap" style="position:relative; display:inline-block; margin:0; padding:0;">
+        <div class="sm-topbar-user-wrap" style="position:relative; display:flex; align-items:center; gap:15px; margin:0; padding:0;" dir="rtl">
+
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <!-- Homepage Icon -->
+                <a href="<?php echo home_url(); ?>" class="sm-header-circle-icon" title="الرئيسية" style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; border-radius:50%; color:#4a5568; text-decoration:none;">
+                    <span class="dashicons dashicons-admin-home" style="font-size:16px; width:16px; height:16px;"></span>
+                </a>
+
+                <!-- Messages Icon -->
+                <a href="<?php echo $is_restricted ? add_query_arg(['sm_tab' => 'my-profile', 'profile_tab' => 'correspondence'], home_url('/my-account')) : add_query_arg('sm_tab', 'messaging', home_url('/dashboard')); ?>" class="sm-header-circle-icon" title="المراسلات والشكاوى" style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; border-radius:50%; color:#4a5568; text-decoration:none; position:relative;">
+                    <span class="dashicons dashicons-email" style="font-size:16px; width:16px; height:16px;"></span>
+                    <?php
+                    $unread_msgs = SM_DB_Communications::get_unread_count($user->ID);
+                    if ($is_restricted) {
+                        $member = SM_DB_Members::get_member_by_wp_user_id($user->ID);
+                        if ($member) {
+                            $unread_tickets = SM_DB_Communications::get_unread_tickets_count($member->id);
+                            $unread_msgs += intval($unread_tickets);
+                        }
+                    }
+                    if ($unread_msgs > 0): ?>
+                        <span class="sm-icon-badge" style="position:absolute; top:-5px; right:-5px; background:#e53e3e; color:#fff; font-size:9px; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff; font-weight:800;"><?php echo $unread_msgs; ?></span>
+                    <?php endif; ?>
+                </a>
+
+                <!-- Notifications Icon -->
+                <div class="sm-notifications-dropdown" style="position: relative;">
+                    <a href="javascript:void(0)" onclick="smToggleNotifications()" class="sm-header-circle-icon" title="التنبيهات" style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; border-radius:50%; color:#4a5568; text-decoration:none; position:relative;">
+                        <span class="dashicons dashicons-bell" style="font-size:16px; width:16px; height:16px;"></span>
+                        <?php
+                        $notif_alerts = [];
+                        if ($is_restricted) {
+                            $member_by_wp = SM_DB_Members::get_member_by_wp_user_id($user->ID);
+                            if ($member_by_wp) {
+                                if ($member_by_wp->last_paid_membership_year < date('Y')) {
+                                    $notif_alerts[] = ['text' => 'يوجد متأخرات في تجديد العضوية السنوية', 'type' => 'warning'];
+                                }
+                            }
+                        }
+                        if (current_user_can('sm_manage_members')) {
+                            $pending_updates = SM_DB_Members::count_pending_update_requests();
+                            if ($pending_updates > 0) {
+                                $notif_alerts[] = ['text' => 'يوجد ' . $pending_updates . ' طلبات تحديث بيانات بانتظار المراجعة', 'type' => 'info'];
+                            }
+                        }
+                        $sys_alerts = SM_DB::get_active_alerts_for_user($user->ID);
+                        foreach($sys_alerts as $sa) {
+                            $notif_alerts[] = ['text' => $sa->title, 'type' => 'system', 'id' => $sa->id, 'details' => $sa->message];
+                        }
+                        if (count($notif_alerts) > 0): ?>
+                            <span class="sm-icon-badge" style="position:absolute; top:-5px; right:-5px; background:#f6ad55; color:#fff; font-size:9px; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff; font-weight:800;"><?php echo count($notif_alerts); ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <div id="sm-notifications-menu" style="display: none; position: absolute; top: 120%; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 12px; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100000; padding: 15px; text-align:right;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 8px; font-weight:800;">التنبيهات والإشعارات</h4>
+                        <?php if (empty($notif_alerts)): ?>
+                            <div style="font-size: 11px; color: #94a3b8; text-align: center; padding: 15px;">لا توجد تنبيهات جديدة حالياً</div>
+                        <?php else: ?>
+                            <?php foreach ($notif_alerts as $a): ?>
+                                <div style="font-size: 11px; padding: 8px 0; border-bottom: 1px solid #f9fafb; color: #4a5568; display: flex; gap: 8px; align-items: flex-start;">
+                                    <span class="dashicons <?php echo $a['type'] == 'system' ? 'dashicons-megaphone' : 'dashicons-warning'; ?>" style="font-size: 14px; color: <?php echo $a['type'] == 'system' ? 'var(--sm-primary-color)' : '#d69e2e'; ?>;"></span>
+                                    <span>
+                                        <strong style="display:block; margin-bottom:2px;"><?php echo esc_html($a['text']); ?></strong>
+                                        <?php if($a['type'] == 'system'): ?>
+                                            <div style="font-size:10px; color:#718096; margin-bottom:5px;"><?php echo esc_html(mb_strimwidth(strip_tags($a['details']), 0, 80, "...")); ?></div>
+                                            <a href="javascript:smAcknowledgeAlert(<?php echo intval($a['id']); ?>)" style="font-size:10px; color:var(--sm-primary-color); font-weight:700;">عرض التفاصيل / إغلاق</a>
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
             <div class="sm-user-dropdown">
                 <div class="sm-user-profile-nav" onclick="smToggleUserDropdown()" style="display: flex; align-items: center; gap: 10px; background: #fff; padding: 5px 10px; border-radius: 50px; border: 1px solid #e2e8f0; cursor: pointer; transition: 0.2s;">
                     <div style="text-align: right;">
@@ -111,7 +186,7 @@ class SM_Auth {
                         <?php echo get_avatar($user->ID, 28, '', '', array('style' => 'width: 100%; height: 100%; object-fit: cover; border-radius: 50%;')); ?>
                     </div>
                 </div>
-                <div id="sm-user-dropdown-menu" style="display: none; position: absolute; top: 110%; left: 0; background: white; border: 1px solid var(--sm-border-color); border-radius: 12px; width: 280px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 100000; animation: smFadeIn 0.2s ease-out; padding: 8px 0; margin: 0;">
+                <div id="sm-user-dropdown-menu" style="display: none; position: absolute; top: 110%; right: 0; background: white; border: 1px solid var(--sm-border-color); border-radius: 12px; width: 280px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); z-index: 100000; animation: smFadeIn 0.2s ease-out; padding: 8px 0; margin: 0; text-align:right;">
                     <div id="sm-profile-view">
                         <div style="padding: 10px 20px; border-bottom: 1px solid #f0f0f0; margin-bottom: 5px;">
                             <div style="font-weight: 800; color: var(--sm-dark-color);"><?php echo $user->display_name; ?></div>
@@ -159,9 +234,33 @@ class SM_Auth {
                     menu.style.display = 'block';
                     document.getElementById('sm-profile-view').style.display = 'block';
                     document.getElementById('sm-profile-edit').style.display = 'none';
+                    const notif = document.getElementById('sm-notifications-menu');
+                    if (notif) notif.style.display = 'none';
                 } else {
                     menu.style.display = 'none';
                 }
+            };
+            window.smToggleNotifications = function() {
+                const menu = document.getElementById('sm-notifications-menu');
+                if (menu.style.display === 'none') {
+                    menu.style.display = 'block';
+                    const userMenu = document.getElementById('sm-user-dropdown-menu');
+                    if (userMenu) userMenu.style.display = 'none';
+                } else {
+                    menu.style.display = 'none';
+                }
+            };
+            window.smAcknowledgeAlert = function(id) {
+                const action = 'sm_acknowledge_alert_ajax';
+                const formData = new FormData();
+                formData.append('action', action);
+                formData.append('alert_id', id);
+                formData.append('nonce', '<?php echo wp_create_nonce("sm_profile_action"); ?>');
+                fetch(ajaxurl + '?action=' + action, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(res => {
+                    location.reload();
+                });
             };
             window.smEditProfile = function() {
                 document.getElementById('sm-profile-view').style.display = 'none';
@@ -194,6 +293,11 @@ class SM_Auth {
                 const menu = document.getElementById('sm-user-dropdown-menu');
                 if (dropdown && !dropdown.contains(e.target)) {
                     if (menu) menu.style.display = 'none';
+                }
+                const notifDropdown = document.querySelector('.sm-notifications-dropdown');
+                const notifMenu = document.getElementById('sm-notifications-menu');
+                if (notifDropdown && !notifDropdown.contains(e.target)) {
+                    if (notifMenu) notifMenu.style.display = 'none';
                 }
             });
         }
@@ -352,6 +456,29 @@ class SM_Auth {
             }
         } catch (Throwable $e) {
             wp_send_json_error(['message' => 'Critical Error submitting request: ' . $e->getMessage()]);
+        }
+    }
+
+    public static function ajax_acknowledge_alert_ajax() {
+        try {
+            if (!is_user_logged_in()) {
+                wp_send_json_error(['message' => 'يجب تسجيل الدخول أولاً']);
+            }
+            check_ajax_referer('sm_profile_action', 'nonce');
+            $user_id = get_current_user_id();
+            $alert_id = intval($_POST['alert_id'] ?? 0);
+            if (!$alert_id) wp_send_json_error(['message' => 'ID التنبيه غير صحيح']);
+
+            global $wpdb;
+            $wpdb->insert($wpdb->prefix . 'sm_alert_views', [
+                'alert_id' => $alert_id,
+                'user_id' => $user_id,
+                'acknowledged' => 1,
+                'created_at' => current_time('mysql')
+            ]);
+            wp_send_json_success('تم تأكيد استلام التنبيه');
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
         }
     }
 

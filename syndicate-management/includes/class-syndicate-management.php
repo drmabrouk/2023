@@ -141,6 +141,10 @@ class Syndicate_Management {
             'sm_add_test_question' => ['SM_Education_Manager', 'ajax_add_test_question'],
             'sm_delete_test_question' => ['SM_Education_Manager', 'ajax_delete_test_question'],
             'sm_assign_test' => ['SM_Education_Manager', 'ajax_assign_test'],
+            'sm_save_test_group' => ['SM_Education_Manager', 'ajax_save_test_group'],
+            'sm_get_group_members' => ['SM_Education_Manager', 'ajax_get_group_members'],
+            'sm_add_group_members' => ['SM_Education_Manager', 'ajax_add_group_members'],
+            'sm_remove_group_member' => ['SM_Education_Manager', 'ajax_remove_group_member'],
             'sm_start_test_session' => ['SM_Education_Manager', 'ajax_start_test_session'],
             'sm_log_test_action' => ['SM_Education_Manager', 'ajax_log_test_action'],
             'sm_sync_test_progress' => ['SM_Education_Manager', 'ajax_sync_test_progress'],
@@ -149,6 +153,8 @@ class Syndicate_Management {
             'sm_cancel_survey' => ['SM_Education_Manager', 'ajax_cancel_survey'],
             'sm_get_survey_results' => ['SM_Education_Manager', 'ajax_get_survey_results'],
             'sm_export_survey_results' => ['SM_Education_Manager', 'ajax_export_survey_results'],
+            'sm_get_live_sessions_ajax' => ['SM_Education_Manager', 'ajax_get_live_sessions_ajax'],
+            'sm_get_live_security_logs_ajax' => ['SM_Education_Manager', 'ajax_get_live_security_logs_ajax'],
             'sm_get_test_questions' => ['SM_Education_Manager', 'ajax_get_test_questions'],
 
             // System Module
@@ -182,6 +188,7 @@ class Syndicate_Management {
 
             // Auth Module
             'sm_update_profile_ajax' => ['SM_Auth', 'ajax_update_profile'],
+            'sm_acknowledge_alert_ajax' => ['SM_Auth', 'ajax_acknowledge_alert_ajax'],
             'sm_forgot_password_otp' => ['SM_Auth', 'ajax_forgot_password_otp'],
             'sm_reset_password_otp' => ['SM_Auth', 'ajax_reset_password_otp'],
             'sm_activate_account_step1' => ['SM_Auth', 'ajax_activate_account_step1'],

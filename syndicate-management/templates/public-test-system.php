@@ -6,7 +6,7 @@ global $wpdb;
 
 // 1. Get the latest active assignment for the member
 $assign = $wpdb->get_row($wpdb->prepare(
-    "SELECT a.*, s.title, s.time_limit, s.pass_score, s.max_attempts, s.test_type
+    "SELECT a.*, s.title, s.time_limit, s.pass_score, s.max_attempts, s.test_type, s.random_order, s.randomize_answers, s.lock_navigation, s.auto_grade
      FROM {$wpdb->prefix}sm_test_assignments a
      JOIN {$wpdb->prefix}sm_surveys s ON a.test_id = s.id
      WHERE a.user_id = %d AND (a.status = 'assigned' OR a.status = 'active')
@@ -187,6 +187,11 @@ $survey_nonce = wp_create_nonce('sm_survey_action');
         else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
         else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
 
+        // Randomize questions if requested
+        if(<?php echo $assign->random_order; ?> == 1) {
+            QDATA.sort(() => Math.random() - 0.5);
+        }
+
         // Initialize Session in DB
         const fd = new FormData();
         fd.append('action', 'sm_start_test_session');
@@ -210,7 +215,13 @@ $survey_nonce = wp_create_nonce('sm_survey_action');
             $('#exam-timer').text(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
 
             if (timeLeft === Math.floor(TIME_LIMIT * 30)) smNotifyAlert('نصف الوقت انقضى!');
-            if (timeLeft === 300) smNotifyAlert('بقي 5 دقائق فقط!');
+            if (timeLeft === 600) smNotifyAlert('بقي 10 دقائق على نهاية الاختبار');
+            if (timeLeft === 300) smNotifyAlert('تحذير: بقي 5 دقائق فقط!');
+            if (timeLeft === 60) smNotifyAlert('دقيقة واحدة متبقية! يرجى إنهاء المراجعة.');
+
+            if (timeLeft <= 10 && timeLeft > 0) {
+                $('#exam-timer').css('color', '#e53e3e').fadeOut(100).fadeIn(100);
+            }
 
             if (timeLeft <= 0) {
                 clearInterval(timer);
@@ -223,6 +234,9 @@ $survey_nonce = wp_create_nonce('sm_survey_action');
         }, 1000);
     }
 
+    let qTimer;
+    let qTimeLeft;
+
     function renderQuestion() {
         const q = QDATA[currentIdx];
         const prog = ((currentIdx + 1) / QDATA.length) * 100;
@@ -230,32 +244,137 @@ $survey_nonce = wp_create_nonce('sm_survey_action');
         $('#curr-q-num').text(currentIdx + 1);
 
         let html = `<div class="sm-question-block" style="animation: smSlideUp 0.4s ease;">
-            <div style="font-size:12px; color:var(--sm-primary-color); font-weight:800; margin-bottom:10px;">${q.topic || 'عام'} | ${q.points} نقاط</div>
-            <h3>${q.question_text}</h3>
-            <div class="sm-options-grid">`;
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <div style="font-size:12px; color:var(--sm-primary-color); font-weight:800;">${q.topic || 'عام'} | ${q.points} نقاط</div>
+                <div id="curr-q-timer" style="font-size:13px; color:#e53e3e; font-weight:800; display:none;">الوقت المتبقي: <span></span>ث</div>
+            </div>
+            <h3>${q.question_text}</h3>`;
 
-        const opts = JSON.parse(q.options || '[]');
-        opts.forEach((opt, i) => {
-            const sel = answers[q.id] === opt ? 'selected' : '';
-            html += `<div class="sm-option-item ${sel}" onclick="smSelectOption(${q.id}, '${opt}')">
-                <div class="sm-option-circle"></div>
-                <div>${opt}</div>
-            </div>`;
-        });
+        if(q.media_url) {
+            html += `<div style="margin-bottom:20px; text-align:center;"><img src="${q.media_url}" style="max-width:100%; border-radius:12px; max-height:300px; border:1px solid #eee;"></div>`;
+        }
+
+        html += `<div class="sm-options-grid">`;
+
+        if(q.question_type === 'mcq') {
+            const opts = JSON.parse(q.options || '[]');
+            if(<?php echo $assign->randomize_answers; ?> == 1) opts.sort(() => Math.random() - 0.5);
+            opts.forEach((opt, i) => {
+                const sel = answers[q.id] === opt ? 'selected' : '';
+                html += `<div class="sm-option-item ${sel}" onclick="smSelectOption(${q.id}, '${opt}')">
+                    <div class="sm-option-circle"></div>
+                    <div>${opt}</div>
+                </div>`;
+            });
+        } else if(q.question_type === 'true_false') {
+            const opts = ['true', 'false'];
+            opts.forEach(opt => {
+                const label = opt === 'true' ? 'صح' : 'خطأ';
+                const sel = answers[q.id] === opt ? 'selected' : '';
+                html += `<div class="sm-option-item ${sel}" onclick="smSelectOption(${q.id}, '${opt}')">
+                    <div class="sm-option-circle"></div>
+                    <div>${label}</div>
+                </div>`;
+            });
+        } else if(q.question_type === 'essay') {
+            html += `<textarea class="sm-textarea" placeholder="اكتب إجابتك هنا..." rows="6" oninput="smSelectOption(${q.id}, this.value)">${answers[q.id] || ''}</textarea>`;
+        } else if(q.question_type === 'ordering') {
+            let items = JSON.parse(q.options || '[]');
+            let currentOrder = answers[q.id] || [...items].sort(() => Math.random() - 0.5);
+            html += `<div class="q-order-wrap" style="display:grid; gap:8px;">`;
+            currentOrder.forEach(it => {
+                html += `<div class="sm-option-item" draggable="true" ondragstart="smDragStart(event)" ondragover="smDragOver(event)" ondrop="smDrop(event)">
+                    <span class="dashicons dashicons-menu"></span> ${it}
+                </div>`;
+            });
+            html += `</div>`;
+        } else if(q.question_type === 'matching') {
+            let pairs = JSON.parse(q.options || '[]');
+            let keys = pairs.map(p => p.key);
+            let vals = pairs.map(p => p.val).sort(() => Math.random() - 0.5);
+            html += `<div style="display:grid; gap:10px;">`;
+            keys.forEach((k, kidx) => {
+                const saved = (answers[q.id] && answers[q.id][k]) ? answers[q.id][k] : '';
+                html += `<div style="display:flex; align-items:center; gap:15px;">
+                    <div style="flex:1; padding:12px; background:#f8fafc; border-radius:10px; border:1px solid #eee; font-weight:700;">${k}</div>
+                    <div style="color:var(--sm-primary-color); font-weight:900;">←</div>
+                    <select class="sm-select" style="flex:1;" onchange="smSelectMatching(${q.id}, '${k}', this.value)">
+                        <option value="">اختر المقابل...</option>
+                        ${vals.map(v => `<option value="${v}" ${saved == v ? 'selected' : ''}>${v}</option>`).join('')}
+                    </select>
+                </div>`;
+            });
+            html += `</div>`;
+        } else if(q.question_type === 'short_answer') {
+             html += `<input type="text" class="sm-input" placeholder="اكتب إجابتك هنا..." oninput="smSelectOption(${q.id}, this.value)" value="${answers[q.id] || ''}">`;
+        }
 
         html += `</div></div>`;
         $('#question-container').html(html);
 
-        $('#prev-q-btn').toggle(currentIdx > 0);
+        $('#prev-q-btn').toggle(currentIdx > 0 && <?php echo $assign->lock_navigation; ?> == 0);
         $('#next-q-btn').text(currentIdx === QDATA.length - 1 ? 'المراجعة النهائية' : 'التالي');
+
+        // Individual question timer
+        clearInterval(qTimer);
+        if(q.time_limit > 0) {
+            qTimeLeft = q.time_limit;
+            $('#curr-q-timer').show().find('span').text(qTimeLeft);
+            qTimer = setInterval(() => {
+                qTimeLeft--;
+                $('#curr-q-timer span').text(qTimeLeft);
+                if(qTimeLeft <= 0) {
+                    clearInterval(qTimer);
+                    smNavigateQuestion(1);
+                }
+            }, 1000);
+        }
+    }
+
+    window.smDragStart = (e) => { $(e.target).addClass('dragging'); };
+    window.smDragOver = (e) => { e.preventDefault(); };
+    window.smDrop = (e) => {
+        e.preventDefault();
+        const dragging = $('.dragging');
+        const container = dragging.parent();
+        const afterElement = getDragAfterElement(container[0], e.clientY);
+        if(afterElement == null) container.append(dragging);
+        else dragging.insertBefore(afterElement);
+        dragging.removeClass('dragging');
+
+        // Save new order
+        const qid = QDATA[currentIdx].id;
+        answers[qid] = container.find('.sm-option-item').map(function(){ return $(this).text().trim(); }).get();
+    };
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.sm-option-item:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if(offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+            else return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
     window.smSelectOption = (qid, val) => {
         answers[qid] = val;
-        renderQuestion();
+        const q = QDATA[currentIdx];
+        if(q.question_type === 'mcq' || q.question_type === 'true_false') {
+            renderQuestion();
+        }
+    };
+
+    window.smSelectMatching = (qid, key, val) => {
+        if(!answers[qid]) answers[qid] = {};
+        answers[qid][key] = val;
     };
 
     window.smNavigateQuestion = (dir) => {
+        if(dir === 1 && currentIdx === QDATA.length - 1) {
+            smSubmitExamFinal();
+            return;
+        }
         currentIdx += dir;
         if (currentIdx >= QDATA.length) currentIdx = QDATA.length - 1;
         if (currentIdx < 0) currentIdx = 0;
@@ -277,8 +396,12 @@ $survey_nonce = wp_create_nonce('sm_survey_action');
             }
         });
 
-        // Disable Right Click & Inspect
+        // Disable Right Click, Inspect, and Copy/Paste
         document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('copy', e => e.preventDefault());
+        document.addEventListener('cut', e => e.preventDefault());
+        document.addEventListener('paste', e => e.preventDefault());
+
         document.onkeydown = e => {
             if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || (e.ctrlKey && e.keyCode == 85)) return false;
         };

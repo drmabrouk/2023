@@ -72,11 +72,22 @@ foreach ($active_surveys as $survey):
 let currentTestTimer = null;
 let testQuestions = [];
 let activeTestId = 0;
+let currentQuestionIndex = 0;
+let testSettings = {};
 
 function smStartProfessionalTest(s) {
     if(!confirm('هل أنت مستعد لبدء الاختبار؟ سيتم بدء المحتسب الزمني فوراً.')) return;
 
     activeTestId = s.id;
+    testSettings = s;
+    currentQuestionIndex = 0;
+    window.sm_temp_responses = {};
+    window.activeAssignmentId = s.assignment_id || 0;
+
+    // Basic Anti-Cheating
+    document.addEventListener('visibilitychange', smHandleVisibilityChange);
+    window.addEventListener('blur', smHandleBlur);
+
     document.getElementById('overlay-test-title').innerText = s.title;
     document.getElementById('sm-test-overlay').style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -86,8 +97,23 @@ function smStartProfessionalTest(s) {
     .then(r=>r.json()).then(res => {
         if(res.success) {
             testQuestions = res.data;
+
+            // Apply Randomization if set in survey
+            if(s.random_order == 1) {
+                testQuestions.sort(() => Math.random() - 0.5);
+            }
+
             smRenderTestQuestions();
             smStartTimer(s.time_limit);
+
+            // Notify system of start
+            const fd = new FormData();
+            fd.append('action', (window.activeAssignmentId > 0) ? 'sm_start_test_session' : 'sm_log_test_action');
+            if(window.activeAssignmentId > 0) fd.append('assignment_id', window.activeAssignmentId);
+            fd.append('type', 'start');
+            fd.append('details', 'بدء الاختبار من الواجهة');
+            fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
+            fetch(ajaxurl + '?action=' + fd.get('action'), {method:'POST', body:fd});
         } else {
             smHandleAjaxError(res);
             smExitTest();
@@ -100,76 +126,232 @@ function smStartProfessionalTest(s) {
 
 function smRenderTestQuestions() {
     const area = document.getElementById('test-questions-area');
-    if (!area) return;
-    let html = '';
-    testQuestions.forEach((q, idx) => {
-        html += `
-            <div class="test-q-block" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:15px; padding: 30px; margin-bottom: 30px;">
-                <div style="font-weight:900; font-size:1.2em; margin-bottom: 20px; color:var(--sm-dark-color); line-height:1.6;">
-                    ${idx+1}. ${q.question_text}
-                </div>
-        `;
+    if (!area || testQuestions.length === 0) return;
 
-        if(q.question_type === 'mcq') {
-            let opts = [];
-            try { opts = JSON.parse(q.options); } catch(e) { console.error(e); }
-            html += '<div style="display:grid; gap:12px;">';
-            opts.forEach((opt, oidx) => {
-                html += `
-                    <label style="display:flex; align-items:center; gap:12px; background:#fff; padding:15px; border-radius:10px; border:1px solid #edf2f7; cursor:pointer; transition:0.2s;">
-                        <input type="radio" name="q_${q.id}" value="${opt}" style="width:20px; height:20px;">
-                        <span style="font-weight:600;">${opt}</span>
-                    </label>
-                `;
-            });
-            html += '</div>';
-        } else if(q.question_type === 'true_false') {
+    const q = testQuestions[currentQuestionIndex];
+    let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; color:#64748b; font-size:13px;">
+            <span>سؤال <strong>${currentQuestionIndex + 1}</strong> من <strong>${testQuestions.length}</strong></span>
+            <div id="q-timer-display" style="color:#e53e3e; font-weight:800; display:${q.time_limit > 0 ? 'block' : 'none'};">الوقت المتبقي للسؤال: <span id="q-timer-sec">${q.time_limit}</span>ث</div>
+        </div>
+        <div class="test-q-block" id="q-block-${q.id}" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:15px; padding: 30px; margin-bottom: 30px;">
+            <div style="font-weight:900; font-size:1.25em; color:var(--sm-dark-color); line-height:1.6; margin-bottom:20px;">
+                ${q.question_text}
+            </div>
+    `;
+
+    if(q.media_url) {
+        html += `<div style="margin-bottom:20px; text-align:center;"><img src="${q.media_url}" style="max-width:100%; border-radius:12px; border:1px solid #eee; max-height:400px; box-shadow:0 4px 10px rgba(0,0,0,0.05);"></div>`;
+    }
+
+    if(q.question_type === 'mcq') {
+        let opts = [];
+        try { opts = JSON.parse(q.options); } catch(e) {}
+        if(testSettings.randomize_answers == 1) opts.sort(() => Math.random() - 0.5);
+        html += '<div style="display:grid; gap:12px;">';
+        opts.forEach((opt) => {
             html += `
-                <div style="display:flex; gap:20px;">
-                    <label style="flex:1; display:flex; align-items:center; gap:12px; background:#fff; padding:15px; border-radius:10px; border:1px solid #edf2f7; cursor:pointer;">
-                        <input type="radio" name="q_${q.id}" value="true"> <strong>صح</strong>
-                    </label>
-                    <label style="flex:1; display:flex; align-items:center; gap:12px; background:#fff; padding:15px; border-radius:10px; border:1px solid #edf2f7; cursor:pointer;">
-                        <input type="radio" name="q_${q.id}" value="false"> <strong>خطأ</strong>
-                    </label>
-                </div>
+                <label style="display:flex; align-items:center; gap:12px; background:#fff; padding:15px; border-radius:12px; border:1px solid #edf2f7; cursor:pointer; transition:0.2s;">
+                    <input type="radio" name="q_${q.id}" value="${opt}" style="width:20px; height:20px;" ${window.sm_temp_responses && window.sm_temp_responses[q.id] == opt ? 'checked' : ''}>
+                    <span style="font-weight:600;">${opt}</span>
+                </label>
             `;
-        } else {
-            html += `<input type="text" class="sm-input" name="q_${q.id}" placeholder="اكتب إجابتك هنا...">`;
-        }
-
+        });
         html += '</div>';
-    });
+    } else if(q.question_type === 'true_false') {
+        html += `
+            <div style="display:flex; gap:15px;">
+                <label style="flex:1; display:flex; align-items:center; gap:12px; background:#fff; padding:20px; border-radius:12px; border:1px solid #edf2f7; cursor:pointer;">
+                    <input type="radio" name="q_${q.id}" value="true" ${window.sm_temp_responses && window.sm_temp_responses[q.id] == 'true' ? 'checked' : ''}> <strong>صح</strong>
+                </label>
+                <label style="flex:1; display:flex; align-items:center; gap:12px; background:#fff; padding:20px; border-radius:12px; border:1px solid #edf2f7; cursor:pointer;">
+                    <input type="radio" name="q_${q.id}" value="false" ${window.sm_temp_responses && window.sm_temp_responses[q.id] == 'false' ? 'checked' : ''}> <strong>خطأ</strong>
+                </label>
+            </div>
+        `;
+    } else if(q.question_type === 'essay') {
+        html += `<textarea class="sm-textarea" name="q_${q.id}" placeholder="اكتب إجابتك المقالية هنا..." rows="8" style="background:#fff;">${window.sm_temp_responses ? (window.sm_temp_responses[q.id] || '') : ''}</textarea>`;
+    } else if(q.question_type === 'ordering') {
+        let items = [];
+        try { items = JSON.parse(q.options); } catch(e) {}
+        let displayItems = window.sm_temp_responses && window.sm_temp_responses[q.id] ? window.sm_temp_responses[q.id] : [...items].sort(() => Math.random() - 0.5);
+        html += `<div class="q-order-wrap" data-qid="${q.id}" style="display:grid; gap:8px;">`;
+        displayItems.forEach(it => {
+            html += `<div class="q-order-item" style="padding:15px; background:#fff; border:1px solid #ddd; border-radius:10px; cursor:move; display:flex; align-items:center; gap:10px;" draggable="true" ondragstart="smDragStart(event)" ondragover="smDragOver(event)" ondrop="smDrop(event)">
+                <span class="dashicons dashicons-menu" style="color:#94a3b8;"></span> ${it}
+            </div>`;
+        });
+        html += `</div>`;
+    } else if(q.question_type === 'matching') {
+        let pairs = [];
+        try { pairs = JSON.parse(q.options); } catch(e) {}
+        let keys = pairs.map(p => p.key);
+        let vals = pairs.map(p => p.val).sort(() => Math.random() - 0.5);
+        html += `<div style="display:grid; gap:10px;">`;
+        keys.forEach((k, kidx) => {
+            const savedVal = (window.sm_temp_responses && window.sm_temp_responses[q.id]) ? window.sm_temp_responses[q.id][k] : '';
+            html += `<div style="display:flex; align-items:center; gap:15px;">
+                <div style="flex:1; padding:12px; background:#edf2f7; border-radius:10px; font-weight:700;">${k}</div>
+                <div style="color:var(--sm-primary-color); font-weight:900;">←</div>
+                <select name="q_match_${q.id}_${kidx}" data-key="${k}" class="sm-select q-match-select" style="flex:1; background:#fff;">
+                    <option value="">اختر المقابل...</option>
+                    ${vals.map(v => `<option value="${v}" ${savedVal == v ? 'selected' : ''}>${v}</option>`).join('')}
+                </select>
+            </div>`;
+        });
+        html += `</div>`;
+    } else {
+        html += `<input type="text" class="sm-input" name="q_${q.id}" placeholder="اكتب إجابتك هنا..." style="background:#fff;" value="${window.sm_temp_responses ? (window.sm_temp_responses[q.id] || '') : ''}">`;
+    }
+
+    html += '</div>';
+
+    // Navigation Buttons
+    html += `
+        <div style="display:flex; justify-content:space-between; gap:20px;">
+            ${(testSettings.lock_navigation == 0 && currentQuestionIndex > 0) ? `<button class="sm-btn sm-btn-outline" onclick="smPrevQuestion()" style="flex:1;">السابق</button>` : '<div style="flex:1;"></div>'}
+            ${currentQuestionIndex < testQuestions.length - 1 ? `<button class="sm-btn" onclick="smNextQuestion()" style="flex:1; font-weight:800;">السؤال التالي</button>` : ''}
+        </div>
+    `;
+
     area.innerHTML = html;
+
+    // Set individual question timer
+    if(q.time_limit > 0) {
+        window.qTimerSec = q.time_limit;
+    } else {
+        window.qTimerSec = null;
+    }
+}
+
+window.smPrevQuestion = function() {
+    smSaveCurrentAnswer();
+    currentQuestionIndex--;
+    smRenderTestQuestions();
+};
+
+window.smNextQuestion = function() {
+    smSaveCurrentAnswer();
+    currentQuestionIndex++;
+    smRenderTestQuestions();
+};
+
+function smSaveCurrentAnswer() {
+    const q = testQuestions[currentQuestionIndex];
+    if(!window.sm_temp_responses) window.sm_temp_responses = {};
+
+    if(q.question_type === 'ordering') {
+        const wrap = document.querySelector(`.q-order-wrap[data-qid="${q.id}"]`);
+        window.sm_temp_responses[q.id] = wrap ? Array.from(wrap.querySelectorAll('.q-order-item')).map(it => it.innerText.trim()) : [];
+    } else if(q.question_type === 'matching') {
+        const res = {};
+        document.querySelectorAll(`.q-match-select[name^="q_match_${q.id}"]`).forEach(sel => {
+            res[sel.dataset.key] = sel.value;
+        });
+        window.sm_temp_responses[q.id] = res;
+    } else {
+        const el = document.querySelector(`[name="q_${q.id}"]:checked`) ||
+                   document.querySelector(`textarea[name="q_${q.id}"]`) ||
+                   document.querySelector(`input[name="q_${q.id}"]`);
+        window.sm_temp_responses[q.id] = el ? el.value : '';
+    }
+}
+
+window.smDragStart = (e) => { e.dataTransfer.setData('text/plain', e.target.innerText); e.target.classList.add('dragging'); };
+window.smDragOver = (e) => { e.preventDefault(); };
+window.smDrop = (e) => {
+    e.preventDefault();
+    const dragging = document.querySelector('.dragging');
+    if(!dragging) return;
+    const container = e.target.closest('.q-order-wrap');
+    const afterElement = getDragAfterElement(container, e.clientY);
+    if(afterElement == null) container.appendChild(dragging);
+    else container.insertBefore(dragging, afterElement);
+    dragging.classList.remove('dragging');
+};
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.q-order-item:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if(offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+        else return closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 function smStartTimer(mins) {
     let sec = mins * 60;
     const el = document.getElementById('test-timer');
+
+    let lastSync = 0;
+
     currentTestTimer = setInterval(() => {
         let m = Math.floor(sec / 60);
         let s = sec % 60;
         el.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+
+        // Handle current question timer
+        if(window.qTimerSec !== null) {
+            window.qTimerSec--;
+            const qTimerEl = document.getElementById('q-timer-sec');
+            if(qTimerEl) qTimerEl.innerText = window.qTimerSec;
+
+            if(window.qTimerSec <= 0) {
+                smShowNotification('انتهى وقت هذا السؤال!', true);
+                if(currentQuestionIndex < testQuestions.length - 1) {
+                    smNextQuestion();
+                } else {
+                    smFinishTest();
+                }
+            }
+        }
+
         if(sec <= 0) {
             clearInterval(currentTestTimer);
-            smShowNotification('انتهى الوقت المحدد للاختبار! سيتم إرسال إجاباتك الحالية تلقائياً.', true);
+            smShowNotification('انتهى الوقت المحدد للاختبار!', true);
             smFinishTest();
         }
+
+        if(lastSync >= 30) {
+            smSyncProgress();
+            lastSync = 0;
+        }
+
         sec--;
+        lastSync++;
     }, 1000);
 }
 
-function smFinishTest() {
-    const responses = {};
-    testQuestions.forEach(q => {
-        const el = document.querySelector(`[name="q_${q.id}"]:checked`) || document.querySelector(`input[name="q_${q.id}"]`);
-        responses[q.id] = el ? el.value : '';
+function smSyncProgress() {
+    const responses = smGetCurrentResponses();
+    const fd = new FormData();
+    fd.append('action', 'sm_sync_test_progress');
+    if(window.activeAssignmentId) fd.append('assignment_id', window.activeAssignmentId);
+    fd.append('survey_id', activeTestId);
+    fd.append('progress', JSON.stringify(responses));
+    fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
+    fetch(ajaxurl + '?action=sm_sync_test_progress', {method:'POST', body:fd})
+    .then(r=>r.json()).then(res => {
+        if(res.success && res.data.status === 'terminated') {
+            alert('تم إنهاء جلستك من قبل المشرف.');
+            location.reload();
+        }
     });
+}
 
+function smGetCurrentResponses() {
+    return window.sm_temp_responses || {};
+}
+
+function smFinishTest() {
+    smSaveCurrentAnswer();
+    const responses = smGetCurrentResponses();
     const action = 'sm_submit_survey_response';
     const fd = new FormData();
     fd.append('action', action);
     fd.append('survey_id', activeTestId);
+    if(window.activeAssignmentId) fd.append('assignment_id', window.activeAssignmentId);
     fd.append('responses', JSON.stringify(responses));
     fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
 
@@ -212,8 +394,30 @@ function smFinishTest() {
     });
 }
 
+function smHandleVisibilityChange() {
+    if (document.hidden) {
+        smLogSecurityAction('تبديل النافذة / خروج من الاختبار', 'warning');
+    }
+}
+
+function smHandleBlur() {
+    smLogSecurityAction('فقدان التركيز عن نافذة الاختبار', 'warning');
+}
+
+function smLogSecurityAction(msg, type) {
+    const fd = new FormData();
+    fd.append('action', 'sm_log_test_action');
+    if(window.activeAssignmentId) fd.append('assignment_id', window.activeAssignmentId);
+    fd.append('type', type);
+    fd.append('details', msg);
+    fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
+    fetch(ajaxurl + '?action=sm_log_test_action', {method:'POST', body:fd});
+}
+
 function smExitTest() {
     if(confirm('هل أنت متأكد من الانسحاب؟ لن يتم حفظ إجاباتك وستخسر محاولة.')) {
+        document.removeEventListener('visibilitychange', smHandleVisibilityChange);
+        window.removeEventListener('blur', smHandleBlur);
         location.reload();
     }
 }
