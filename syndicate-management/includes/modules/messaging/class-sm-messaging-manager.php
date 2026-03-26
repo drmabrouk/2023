@@ -581,6 +581,7 @@ class SM_Messaging_Manager {
 
     public static function ajax_get_member_comms_log() {
         self::check_capability('sm_manage_system');
+        check_ajax_referer('sm_admin_action', 'nonce');
         $mid = intval($_GET['member_id'] ?? 0);
         wp_send_json_success(SM_DB_Communications::get_member_notification_logs($mid));
     }

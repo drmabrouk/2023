@@ -32,6 +32,7 @@ class SM_Member_Manager {
             if (!current_user_can('sm_manage_members') && !current_user_can('sm_manage_system') && !current_user_can('manage_options')) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_admin_action', 'nonce');
             $query = sanitize_text_field($_REQUEST['member_search'] ?? ($_REQUEST['query'] ?? ''));
         if (empty($query)) wp_send_json_success([]);
 
@@ -144,9 +145,9 @@ class SM_Member_Manager {
             $uid = wp_insert_user($user_data);
             if (!is_wp_error($uid)) {
                 $officer_id = sanitize_text_field($row[3] ?? '');
+                update_user_meta($uid, 'sm_syndicateMemberIdAttr', $officer_id);
                 $phone = sanitize_text_field($row[5] ?? '');
 
-                update_user_meta($uid, 'sm_syndicateMemberIdAttr', $officer_id);
                 update_user_meta($uid, 'sm_phone', $phone);
                 update_user_meta($uid, 'sm_account_status', 'active');
 
@@ -825,6 +826,7 @@ class SM_Member_Manager {
             if (!is_user_logged_in()) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_document_action', 'nonce');
             $mid = SM_DB::get_document_member_id(intval($_GET['doc_id']));
             self::validate_member_access($mid);
             wp_send_json_success(SM_DB::get_document_logs(intval($_GET['doc_id'])));
@@ -838,6 +840,7 @@ class SM_Member_Manager {
             if (!is_user_logged_in()) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_document_action', 'nonce');
             $mid = SM_DB::get_document_member_id(intval($_POST['doc_id']));
         self::validate_member_access($mid);
             SM_DB::log_document_action(intval($_POST['doc_id']), 'view');

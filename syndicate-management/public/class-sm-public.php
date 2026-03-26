@@ -473,17 +473,19 @@ class SM_Public {
         }
     }
 
-    public function ajax_refresh_dashboard() {
+    public static function ajax_refresh_dashboard() {
         if (!is_user_logged_in()) {
             wp_send_json_error('Unauthorized');
         }
+        check_ajax_referer('sm_admin_action', 'nonce');
         wp_send_json_success(array('stats' => SM_DB::get_statistics()));
     }
 
-    public function ajax_get_user_role() {
+    public static function ajax_get_user_role() {
         if (!current_user_can('sm_manage_users')) {
             wp_send_json_error('Unauthorized');
         }
+        check_ajax_referer('sm_admin_action', 'nonce');
         $u = get_userdata(intval($_GET['user_id']));
         if ($u) {
             wp_send_json_success(['role' => !empty($u->roles) ? $u->roles[0] : '']);

@@ -95,13 +95,7 @@ class SM_DB_Finance {
             }
         }
 
-        $query_count = "SELECT COUNT(*) FROM {$wpdb->prefix}sm_members WHERE $where_member";
-        if (strpos($where_member, '%') !== false) {
-             // Basic check if prepare might be needed if target_gov was passed
-             $stats['total_members'] = $wpdb->get_var($wpdb->prepare($query_count, $target_gov ?: $my_gov));
-        } else {
-             $stats['total_members'] = $wpdb->get_var($query_count);
-        }
+        $stats['total_members'] = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}sm_members WHERE $where_member");
         $stats['total_officers'] = count(SM_DB_Members::get_staff(['number' => -1]));
 
         // Total Board Members

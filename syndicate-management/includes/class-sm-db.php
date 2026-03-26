@@ -120,9 +120,21 @@ class SM_DB {
         return SM_DB_Members::process_update_request($id, $status);
     }
 
+    public static function count_pending_update_requests() {
+        return SM_DB_Members::count_pending_update_requests();
+    }
+
+    public static function get_member_by_wp_user_id($uid) {
+        return SM_DB_Members::get_member_by_wp_user_id($uid);
+    }
+
     // Service & Professional Delegation
     public static function get_services($args = []) {
         return SM_DB_Services::get_services($args);
+    }
+
+    public static function get_service_by_id($id) {
+        return SM_DB_Services::get_service_by_id($id);
     }
 
     public static function add_service($data) {
@@ -223,6 +235,14 @@ class SM_DB {
         return SM_DB_Communications::delete_expired_messages();
     }
 
+    public static function get_unread_count($uid) {
+        return SM_DB_Communications::get_unread_count($uid);
+    }
+
+    public static function get_unread_tickets_count($mid) {
+        return SM_DB_Communications::get_unread_tickets_count($mid);
+    }
+
     public static function create_ticket($data) {
         return SM_DB_Communications::create_ticket($data);
     }
@@ -254,6 +274,14 @@ class SM_DB {
     // Education Delegation
     public static function add_survey($data) {
         return SM_DB_Education::add_survey($data);
+    }
+
+    public static function get_user_survey_response_id($sid, $uid) {
+        return SM_DB_Education::get_user_survey_response_id($sid, $uid);
+    }
+
+    public static function get_user_best_score($tid, $uid) {
+        return SM_DB_Education::get_user_best_score($tid, $uid);
     }
 
     public static function get_surveys($uid, $role, $spec = '') {

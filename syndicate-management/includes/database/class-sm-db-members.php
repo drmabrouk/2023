@@ -133,7 +133,13 @@ class SM_DB_Members {
             $params = array_merge($params, $search_params);
         }
 
-        $orderby = $args['orderby'] ?? 'sort_order ASC, name ASC';
+        $allowed_orderby = ['id', 'name', 'national_id', 'membership_number', 'sort_order', 'registration_date', 'membership_expiration_date', 'license_expiration_date'];
+        $orderby = 'sort_order ASC, name ASC';
+        if (!empty($args['orderby']) && in_array($args['orderby'], $allowed_orderby)) {
+            $order = (!empty($args['order']) && strtoupper($args['order']) === 'DESC') ? 'DESC' : 'ASC';
+            $orderby = sanitize_sql_orderby($args['orderby'] . " " . $order);
+        }
+
         $query = "SELECT * FROM $table_name WHERE $where ORDER BY $orderby";
 
         if ($limit != -1) {

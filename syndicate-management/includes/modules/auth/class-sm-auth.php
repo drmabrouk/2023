@@ -409,6 +409,11 @@ class SM_Auth {
 
     public static function ajax_track_membership_request() {
         try {
+            if (isset($_POST['_wpnonce'])) {
+                check_ajax_referer('sm_registration_nonce', '_wpnonce');
+            } else {
+                check_ajax_referer('sm_registration_nonce', 'nonce');
+            }
             $req = SM_DB::get_membership_request_by_national_id(sanitize_text_field($_POST['national_id']));
             if (!$req) {
                 wp_send_json_error(['message' => 'لم يتم العثور على طلب بهذا الرقم القومي']);
