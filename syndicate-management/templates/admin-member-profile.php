@@ -148,6 +148,9 @@ $acc_status = SM_Finance::get_member_status($member->id);
                     <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('exams-tab', this)">
                         <span class="dashicons dashicons-welcome-learn-more"></span> <span>الاختبارات المهنية</span>
                     </button>
+                    <a href="<?php echo wp_logout_url(home_url('/sm-login')); ?>" class="sm-portal-nav-btn" style="color: #e53e3e; text-decoration: none;">
+                        <span class="dashicons dashicons-logout"></span> <span>تسجيل الخروج</span>
+                    </a>
                 </nav>
             </div>
         </div>
@@ -170,7 +173,7 @@ $acc_status = SM_Finance::get_member_status($member->id);
     <?php endif; ?>
 
     <div id="profile-info" class="sm-internal-tab">
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+        <div style="display: grid; grid-template-columns: <?php echo $is_restricted ? '1fr' : '2fr 1fr'; ?>; gap: 30px;">
             <div style="display: flex; flex-direction: column; gap: 30px;">
                 <!-- Basic Info -->
                 <div style="background: #fff; padding: 30px; border-radius: 12px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
@@ -214,6 +217,7 @@ $acc_status = SM_Finance::get_member_status($member->id);
             </div>
         </div>
 
+        <?php if (!$is_restricted): ?>
         <div style="display: flex; flex-direction: column; gap: 30px;">
             <!-- Account Status -->
             <div style="background: #fff; padding: 30px; border-radius: 12px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
@@ -256,7 +260,9 @@ $acc_status = SM_Finance::get_member_status($member->id);
                 </div>
             </div>
         </div>
-    </div>
+        <?php endif; ?>
+    </div> <!-- Close Grid -->
+</div> <!-- Close profile-info -->
 
     <!-- Professional Requests Tab -->
     <div id="professional-requests-tab" class="sm-internal-tab" style="display: none;">
