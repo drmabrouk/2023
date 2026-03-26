@@ -31,7 +31,7 @@ class SM_DB_Communications {
 
     public static function get_governorate_officials($governorate) {
         return get_users(array(
-            'role__in' => array('sm_system_admin', 'sm_syndicate_admin', 'administrator'),
+            'role__in' => array('sm_general_officer', 'sm_branch_officer', 'administrator'),
             'meta_query' => array(
                 array(
                     'key' => 'sm_governorate',
@@ -195,9 +195,9 @@ class SM_DB_Communications {
     public static function get_tickets($args = array()) {
         global $wpdb;
         $user = wp_get_current_user();
-        $is_sys_admin = in_array('sm_system_admin', $user->roles) || in_array('administrator', $user->roles);
-        $is_officer = in_array('sm_syndicate_admin', $user->roles);
-        $is_member = in_array('sm_syndicate_member', $user->roles);
+        $is_sys_admin = current_user_can('sm_manage_system');
+        $is_officer = current_user_can('sm_branch_access') || current_user_can('sm_full_access');
+        $is_member = in_array('sm_member', (array)$user->roles);
 
         $where = "1=1";
         $params = array();

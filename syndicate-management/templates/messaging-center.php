@@ -1,12 +1,9 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <?php
 $my_id = get_current_user_id();
-$user = wp_get_current_user();
-$roles = (array)$user->roles;
-$is_admin = in_array('sm_system_admin', $roles) || in_array('administrator', $roles);
-$is_officer = in_array('sm_syndicate_admin', $roles);
-$is_member = in_array('sm_syndicate_member', $roles);
-$is_official = $is_admin || $is_officer;
+$is_admin = current_user_can('manage_options');
+$is_official = current_user_can('sm_branch_access') || current_user_can('sm_full_access');
+$is_member = !current_user_can('sm_branch_access') && !current_user_can('sm_full_access');
 
 $categories = array(
     'inquiry' => array('label' => 'استفسار عام', 'color' => '#EBF8FF', 'text' => '#3182CE'),

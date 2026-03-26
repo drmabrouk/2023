@@ -401,4 +401,34 @@ class SM_Settings {
     public static function save_finance_settings($settings) {
         update_option('sm_finance_settings', $settings);
     }
+
+    public static function get_role_permissions() {
+        $default = array(
+            'sm_general_officer' => array(
+                'modules' => array('members', 'finance', 'licenses', 'services', 'education', 'messaging', 'archive'),
+                'actions' => array('add_member', 'edit_member', 'delete_member', 'record_payment', 'issue_license', 'print_reports')
+            ),
+            'sm_branch_officer' => array(
+                'modules' => array('members', 'finance', 'licenses', 'services', 'education', 'messaging'),
+                'actions' => array('add_member', 'edit_member', 'record_payment', 'print_reports')
+            ),
+            'sm_member' => array(
+                'modules' => array('services', 'education'),
+                'actions' => array()
+            )
+        );
+        return get_option('sm_role_permissions', $default);
+    }
+
+    public static function save_role_permissions($data) {
+        update_option('sm_role_permissions', $data);
+    }
+
+    public static function can_role_access($role, $module_or_action) {
+        if ($role === 'administrator') return true;
+        $perms = self::get_role_permissions();
+        if (!isset($perms[$role])) return false;
+
+        return in_array($module_or_action, $perms[$role]['modules']) || in_array($module_or_action, $perms[$role]['actions']);
+    }
 }

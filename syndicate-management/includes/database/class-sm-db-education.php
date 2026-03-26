@@ -66,7 +66,6 @@ class SM_DB_Education {
     public static function get_surveys($user_id, $role, $specialty = '') {
         global $wpdb;
         $roles = [$role, 'all'];
-        if ($role === 'sm_syndicate_member') $roles[] = 'sm_member';
 
         $placeholders = implode(',', array_fill(0, count($roles), '%s'));
 
@@ -145,7 +144,7 @@ class SM_DB_Education {
     public static function get_survey_responses($survey_id) {
         global $wpdb;
         $user = wp_get_current_user();
-        $is_sys_admin = in_array('sm_system_admin', (array)$user->roles) || current_user_can('manage_options');
+        $is_sys_admin = current_user_can('sm_manage_system');
         $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
 
         $where = $wpdb->prepare("r.survey_id = %d", $survey_id);
@@ -201,7 +200,7 @@ class SM_DB_Education {
     public static function get_surveys_admin($args = []) {
         global $wpdb;
         $user = wp_get_current_user();
-        $is_sys_admin = in_array('sm_system_admin', (array)$user->roles) || current_user_can('manage_options');
+        $is_sys_admin = current_user_can('sm_manage_system');
         $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
 
         $where = "1=1";

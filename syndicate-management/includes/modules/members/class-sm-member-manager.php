@@ -135,7 +135,7 @@ class SM_Member_Manager {
                 'user_email' => sanitize_email($row[1]),
                 'display_name' => sanitize_text_field($row[2]),
                 'user_pass' => $row[6] ?? null,
-                'role' => 'sm_syndicate_member' // Default
+                'role' => 'sm_member' // Default
             ];
 
             if (username_exists($user_data['user_login']) || email_exists($user_data['user_email'])) {
@@ -315,12 +315,11 @@ class SM_Member_Manager {
             return false;
         }
         $user = wp_get_current_user();
-        $roles = (array)$user->roles;
-        if ((in_array('sm_syndicate_member', $roles) || in_array('sm_member', $roles)) && $member->wp_user_id == $user->ID) {
+        if ($member->wp_user_id == $user->ID) {
             return true;
         }
-        $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
-        if (in_array('sm_syndicate_admin', (array)$user->roles) || in_array('sm_syndicate_member', (array)$user->roles)) {
+        if (current_user_can('sm_branch_access')) {
+            $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
             if ($my_gov && $member->governorate !== $my_gov) {
                 return false;
             }
@@ -410,7 +409,7 @@ class SM_Member_Manager {
             update_user_meta($uid, 'sm_account_status', 'active');
 
             $gov = sanitize_text_field($_POST['governorate'] ?? '');
-            if (in_array('sm_syndicate_admin', (array)wp_get_current_user()->roles)) {
+            if (current_user_can('sm_branch_access')) {
                 $gov = get_user_meta(get_current_user_id(), 'sm_governorate', true);
             }
             update_user_meta($uid, 'sm_governorate', $gov);

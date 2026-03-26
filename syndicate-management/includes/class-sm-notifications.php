@@ -192,7 +192,7 @@ class SM_Notifications {
                 'message' => "تم اكتشاف عدد ($issues) مشكلة محتملة في قاعدة البيانات خلال الفحص التلقائي اليومي. يرجى مراجعة صفحة 'صحة النظام' في الإعدادات المتقدمة.",
                 'severity' => 'warning',
                 'status' => 'active',
-                'target_roles' => ['sm_system_admin', 'administrator'],
+                'target_roles' => ['administrator'],
                 'must_acknowledge' => 1
             ]);
         }

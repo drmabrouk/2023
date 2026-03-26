@@ -908,14 +908,14 @@
 <?php
 $user = wp_get_current_user();
 $roles = (array)$user->roles;
-$is_admin = in_array('administrator', $roles) || current_user_can('manage_options');
-$is_sys_admin = in_array('sm_system_admin', $roles);
-$is_syndicate_admin = in_array('sm_syndicate_admin', $roles);
-$is_syndicate_member = in_array('sm_syndicate_member', $roles);
-$is_member = in_array('sm_member', $roles);
-$is_officer = $is_syndicate_admin || $is_syndicate_member;
+$user_role = reset($roles); // Primary role
 
-$is_restricted = ($is_member || $is_syndicate_member) && !current_user_can('sm_manage_members');
+$is_admin = in_array('administrator', $roles) || current_user_can('manage_options');
+$is_general_officer = in_array('sm_general_officer', $roles);
+$is_branch_officer = in_array('sm_branch_officer', $roles);
+$is_member = in_array('sm_member', $roles);
+
+$is_restricted = $is_member;
 $default_tab = $is_restricted ? 'my-profile' : 'summary';
 $active_tab = isset($_GET['sm_tab']) ? sanitize_text_field($_GET['sm_tab']) : $default_tab;
 
@@ -957,10 +957,10 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                 <div style="display: inline-flex; align-items: center; padding: 6px 16px; background: #f0f4f8; color: #111F35; border-radius: 12px; font-size: 11px; font-weight: 700; margin-top: 8px; border: 1px solid #cbd5e0; line-height: 1.4; gap: 8px;">
                     <div style="color: #4a5568;">
                         <?php
-                        if ($is_admin || $is_sys_admin) echo 'مدير النظام';
-                        elseif ($is_syndicate_admin) echo 'مسؤول النقابة';
-                        elseif ($is_syndicate_member) echo 'عضو النقابة';
-                        elseif ($is_member) echo 'عضو';
+                        if ($is_admin) echo 'مدير النظام';
+                        elseif ($is_general_officer) echo 'مسؤول النقابة العامة';
+                        elseif ($is_branch_officer) echo 'مسؤول نقابة';
+                        elseif ($is_member) echo 'عضو النقابة';
                         else echo 'مستخدم النظام';
                         ?>
                     </div>
@@ -981,7 +981,7 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                 <div style="font-size: 0.85em; font-weight: 700; color: var(--sm-dark-color);"><?php echo date_i18n('l j F Y'); ?></div>
             </div>
 
-            <?php if ($is_admin || $is_sys_admin || $is_syndicate_admin): ?>
+            <?php if ($is_admin || $is_general_officer || $is_branch_officer): ?>
                 <div style="display: flex; gap: 10px;">
                     <button onclick="window.location.href='<?php echo add_query_arg('sm_tab', 'global-archive'); ?>&sub_tab=finance'" class="sm-btn" style="background: #e67e22; height: 38px; font-size: 11px; color: white !important; width: auto;"><span class="dashicons dashicons-portfolio" style="font-size: 16px; margin-top: 4px;"></span> الأرشيف الرقمي</button>
                     <button onclick="window.location.href='<?php echo add_query_arg('sm_tab', 'practice-licenses'); ?>&action=new'" class="sm-btn" style="background: #2c3e50; height: 38px; font-size: 11px; color: white !important; width: auto;" title="إصدار تصريح جديد">+ إصدار تصريح</button>
@@ -1133,7 +1133,7 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     <a href="<?php echo add_query_arg('sm_tab', 'summary'); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-dashboard"></span> <?php echo $labels['tab_summary']; ?></a>
                 </li>
 
-                <?php if ($is_admin || $is_sys_admin || $is_syndicate_admin): ?>
+                <?php if (SM_Settings::can_role_access($user_role, 'members')): ?>
                     <li class="sm-sidebar-item <?php echo in_array($active_tab, ['members', 'update-requests', 'membership-requests', 'professional-requests']) ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg('sm_tab', 'members'); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-groups"></span> <?php echo $labels['tab_members']; ?></a>
                         <ul class="sm-sidebar-dropdown" style="display: <?php echo in_array($active_tab, ['members', 'update-requests', 'membership-requests', 'professional-requests']) ? 'block' : 'none'; ?>;">
@@ -1145,10 +1145,13 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     </li>
                 <?php endif; ?>
 
-                <?php if (!$is_restricted && ($is_admin || $is_sys_admin || $is_syndicate_admin)): ?>
+                <?php if (SM_Settings::can_role_access($user_role, 'finance')): ?>
                     <li class="sm-sidebar-item <?php echo $active_tab == 'finance' ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg('sm_tab', 'finance'); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-money-alt"></span> المحاسبة والمالية</a>
                     </li>
+                <?php endif; ?>
+
+                <?php if (SM_Settings::can_role_access($user_role, 'licenses')): ?>
                     <li class="sm-sidebar-item <?php echo $active_tab == 'practice-licenses' ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg('sm_tab', 'practice-licenses'); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-id-alt"></span> تراخيص مزاولة المهنة</a>
                     </li>
@@ -1157,15 +1160,16 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     </li>
                 <?php endif; ?>
 
-
-
-                <?php if ($is_admin || $is_sys_admin || $is_syndicate_admin || $is_syndicate_member || $is_member): ?>
+                <?php if (SM_Settings::can_role_access($user_role, 'services')): ?>
                     <li class="sm-sidebar-item <?php echo $active_tab == 'digital-services' ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg('sm_tab', 'digital-services'); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-cloud"></span> الخدمات الرقمية</a>
                     </li>
+                <?php endif; ?>
+
+                <?php if (SM_Settings::can_role_access($user_role, 'education')): ?>
                     <li class="sm-sidebar-item <?php echo in_array($active_tab, ['surveys', 'test-questions']) ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg('sm_tab', 'surveys'); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-welcome-learn-more"></span> اختبارات الممارسة المهنية</a>
-                        <?php if($is_admin || $is_sys_admin || $is_syndicate_admin): ?>
+                        <?php if($is_admin || $is_general_officer): ?>
                         <ul class="sm-sidebar-dropdown" style="display: <?php echo in_array($active_tab, ['surveys', 'test-questions']) ? 'block' : 'none'; ?>;">
                             <li><a href="<?php echo add_query_arg('sm_tab', 'surveys'); ?>" class="<?php echo $active_tab == 'surveys' ? 'sm-sub-active' : ''; ?>"><span class="dashicons dashicons-chart-bar"></span> نتائج ومشاركات</a></li>
                             <li><a href="<?php echo add_query_arg('sm_tab', 'test-questions'); ?>" class="<?php echo $active_tab == 'test-questions' ? 'sm-sub-active' : ''; ?>"><span class="dashicons dashicons-admin-settings"></span> بنك الأسئلة والإعدادات</a></li>
@@ -1174,7 +1178,13 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     </li>
                 <?php endif; ?>
 
-                <?php if ($is_admin || $is_sys_admin || $is_syndicate_admin): ?>
+                <?php if (SM_Settings::can_role_access($user_role, 'archive')): ?>
+                    <li class="sm-sidebar-item <?php echo $active_tab == 'global-archive' ? 'sm-active' : ''; ?>">
+                        <a href="<?php echo add_query_arg(['sm_tab' => 'global-archive']); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-portfolio"></span> الأرشيف الرقمي</a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if ($is_admin || $is_general_officer): ?>
                     <li class="sm-sidebar-item <?php echo $active_tab == 'branches' ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg(['sm_tab' => 'branches']); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-networking"></span> فروع النقابة</a>
                     </li>
@@ -1189,7 +1199,7 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     </li>
                 <?php endif; ?>
 
-                <?php if ($is_admin || $is_sys_admin): ?>
+                <?php if ($is_admin): ?>
                     <li class="sm-sidebar-item <?php echo $active_tab == 'advanced-settings' ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg('sm_tab', 'advanced-settings'); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-admin-tools"></span> الإعدادات المتقدمة</a>
                         <ul class="sm-sidebar-dropdown" style="display: <?php echo $active_tab == 'advanced-settings' ? 'block' : 'none'; ?>;">
@@ -1338,8 +1348,76 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                             <button class="sm-tab-btn <?php echo ($sub == 'backup') ? 'sm-active' : ''; ?>" onclick="smOpenInternalTab('backup-settings', this)">مركز النسخ الاحتياطي</button>
                             <button class="sm-tab-btn <?php echo ($sub == 'emails') ? 'sm-active' : ''; ?>" onclick="smOpenInternalTab('system-email-settings', this)">إعدادات البريد</button>
                             <button class="sm-tab-btn <?php echo ($sub == 'logs') ? 'sm-active' : ''; ?>" onclick="smOpenInternalTab('activity-logs', this)">سجل النشاطات</button>
+                            <button class="sm-tab-btn <?php echo ($sub == 'permissions') ? 'sm-active' : ''; ?>" onclick="smOpenInternalTab('role-permissions-settings', this)">صلاحيات الأدوار</button>
                             <button class="sm-tab-btn <?php echo ($sub == 'health') ? 'sm-active' : ''; ?>" onclick="smOpenInternalTab('system-health-tab', this)">صحة النظام</button>
                             <button class="sm-tab-btn <?php echo ($sub == 'about') ? 'sm-active' : ''; ?>" onclick="smOpenInternalTab('system-about-tab', this)">عن النظام</button>
+                        </div>
+
+                        <div id="role-permissions-settings" class="sm-internal-tab" style="display: <?php echo ($sub == 'permissions') ? 'block' : 'none'; ?>;">
+                            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding: 25px;">
+                                <h3 style="margin-top:0; border-bottom:2px solid #f1f5f9; padding-bottom:15px; margin-bottom:20px;">التحكم بصلاحيات الأدوار والوصول للمنشورات</h3>
+                                <form method="post">
+                                    <?php wp_nonce_field('sm_admin_action', 'sm_admin_nonce'); ?>
+                                    <?php
+                                    $perms = SM_Settings::get_role_permissions();
+                                    $role_names = [
+                                        'sm_general_officer' => 'مسؤول النقابة العامة',
+                                        'sm_branch_officer' => 'مسؤول نقابة (فرعي)',
+                                        'sm_member' => 'عضو النقابة'
+                                    ];
+                                    $all_modules = [
+                                        'members' => 'إدارة الأعضاء',
+                                        'finance' => 'المالية والمحاسبة',
+                                        'licenses' => 'التراخيص',
+                                        'services' => 'الخدمات الرقمية',
+                                        'education' => 'الاختبارات والتعليم',
+                                        'messaging' => 'المراسلات',
+                                        'archive' => 'الأرشيف الرقمي'
+                                    ];
+                                    $all_actions = [
+                                        'add_member' => 'إضافة عضو',
+                                        'edit_member' => 'تعديل عضو',
+                                        'delete_member' => 'حذف عضو',
+                                        'record_payment' => 'تسجيل دفع',
+                                        'issue_license' => 'إصدار ترخيص',
+                                        'print_reports' => 'طباعة التقارير'
+                                    ];
+                                    ?>
+
+                                    <div style="display:grid; gap:25px;">
+                                        <?php foreach ($role_names as $role_key => $role_name): ?>
+                                            <div style="border:1px solid #eee; border-radius:10px; padding:20px;">
+                                                <h4 style="margin-top:0; color:var(--sm-primary-color);"><?php echo $role_name; ?></h4>
+                                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                                                    <div>
+                                                        <h5 style="margin-bottom:10px; font-size:12px; color:#64748b;">الموديولات المتاحة:</h5>
+                                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                                                            <?php foreach ($all_modules as $mk => $mv): ?>
+                                                                <label style="font-size:12px; display:flex; align-items:center; gap:5px;">
+                                                                    <input type="checkbox" name="perms[<?php echo $role_key; ?>][modules][]" value="<?php echo $mk; ?>" <?php echo in_array($mk, $perms[$role_key]['modules']) ? 'checked' : ''; ?>> <?php echo $mv; ?>
+                                                                </label>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h5 style="margin-bottom:10px; font-size:12px; color:#64748b;">الإجراءات المسموح بها:</h5>
+                                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                                                            <?php foreach ($all_actions as $ak => $av): ?>
+                                                                <label style="font-size:12px; display:flex; align-items:center; gap:5px;">
+                                                                    <input type="checkbox" name="perms[<?php echo $role_key; ?>][actions][]" value="<?php echo $ak; ?>" <?php echo in_array($ak, $perms[$role_key]['actions']) ? 'checked' : ''; ?>> <?php echo $av; ?>
+                                                                </label>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div style="margin-top:25px; text-align:center;">
+                                        <button type="submit" name="sm_save_role_permissions" class="sm-btn" style="width:auto; padding:0 50px;">حفظ إعدادات الصلاحيات</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
 
                         <div id="system-health-tab" class="sm-internal-tab" style="display: <?php echo ($sub == 'health') ? 'block' : 'none'; ?>;">
@@ -2075,10 +2153,10 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                 <div class="sm-form-group">
                     <label class="sm-label" style="font-size: 12px;">استهداف الأدوار:</label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="sm_member"> عضو</label>
-                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="sm_syndicate_member"> عضو نقابة</label>
-                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="sm_syndicate_admin"> مسؤول نقابة</label>
-                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="sm_system_admin"> مدير نظام</label>
+                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="sm_member"> عضو النقابة</label>
+                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="sm_branch_officer"> مسؤول نقابة</label>
+                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="sm_general_officer"> مسؤول النقابة العامة</label>
+                        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" name="target_roles[]" value="administrator"> مدير نظام</label>
                     </div>
                 </div>
 

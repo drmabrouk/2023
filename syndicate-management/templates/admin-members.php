@@ -12,14 +12,17 @@ if ($import_results) {
             <h2 style="margin:0; font-weight: 800; color: var(--sm-dark-color);">إدارة الأعضاء وطلبات القيد</h2>
             <p style="margin:5px 0 0 0; color:#64748b; font-size:13px;">إدارة بيانات الأعضاء المسجلين، طباعة البطاقات، وعمليات الاستيراد الجماعي.</p>
         </div>
-        <?php if ($can_manage_members): ?>
         <div style="display: flex; gap: 10px; align-items: center;">
-            <button onclick="document.getElementById('add-single-member-modal').style.display='flex'" class="sm-btn" style="width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;">+ إضافة عضو جديد</button>
-            <button onclick="document.getElementById('csv-import-form').style.display='block'" class="sm-btn sm-btn-secondary" style="width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;">استيراد أعضاء (Excel)</button>
-            <button onclick="smOpenPrintCustomizer('members')" class="sm-btn" style="background: #4a5568; width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;"><span class="dashicons dashicons-printer" style="font-size: 16px; margin-left: 8px;"></span> طباعة مخصصة</button>
-            <a href="<?php echo admin_url('admin-ajax.php?action=sm_print&print_type=id_card'); ?>" target="_blank" class="sm-btn sm-btn-accent" style="background: #27ae60; text-decoration:none; width: 160px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">طباعة كافة البطاقات</a>
+            <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'add_member')): ?>
+                <button onclick="document.getElementById('add-single-member-modal').style.display='flex'" class="sm-btn" style="width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;">+ إضافة عضو جديد</button>
+                <button onclick="document.getElementById('csv-import-form').style.display='block'" class="sm-btn sm-btn-secondary" style="width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;">استيراد أعضاء (Excel)</button>
+            <?php endif; ?>
+
+            <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'print_reports')): ?>
+                <button onclick="smOpenPrintCustomizer('members')" class="sm-btn" style="background: #4a5568; width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;"><span class="dashicons dashicons-printer" style="font-size: 16px; margin-left: 8px;"></span> طباعة مخصصة</button>
+                <a href="<?php echo admin_url('admin-ajax.php?action=sm_print&print_type=id_card'); ?>" target="_blank" class="sm-btn sm-btn-accent" style="background: #27ae60; text-decoration:none; width: 160px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">طباعة كافة البطاقات</a>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
     </div>
 
     <?php if ($import_results): ?>
@@ -99,7 +102,7 @@ if ($import_results) {
         </form>
     </div>
 
-    <?php if ($can_manage_members): ?>
+    <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'add_member')): ?>
     <!-- CSV Import Form -->
     <div id="csv-import-form" style="display:none; background: #f8fafc; padding: 15px; border: 2px dashed #cbd5e0; border-radius: 12px; margin-bottom: 8px;">
         <h3 style="margin-top:0; color:var(--sm-secondary-color);">استيراد الأعضاء من ملف CSV / Excel</h3>
@@ -171,8 +174,10 @@ if ($import_results) {
                             <td>
                                 <div style="display: flex; gap: 5px; justify-content: flex-end;">
                                     <a href="<?php echo add_query_arg('sm_tab', 'member-profile'); ?>&member_id=<?php echo $member->id; ?>" class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; text-decoration:none; display:flex; align-items:center;">عرض</a>
-                                    <?php if ($can_manage_members): ?>
+                                    <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'edit_member')): ?>
                                         <button onclick='editSmMember(<?php echo esc_attr(json_encode($member)); ?>)' class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; color: #2c3e50; border-color: #2c3e50;">تعديل</button>
+                                    <?php endif; ?>
+                                    <?php if (current_user_can('manage_options')): ?>
                                         <button onclick='smOpenMemberAccountModal(<?php echo esc_attr(json_encode(["id" => $member->id, "wp_user_id" => $member->wp_user_id, "name" => $member->name, "email" => $member->email])); ?>)' class="sm-btn" style="padding: 4px 10px; font-size: 11px; height: 28px; background: #2c3e50;">الحساب</button>
                                     <?php endif; ?>
                                 </div>
@@ -199,7 +204,7 @@ if ($import_results) {
     </div>
     <?php endif; ?>
 
-    <?php if ($can_manage_members): ?>
+    <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'add_member')): ?>
     <div id="add-single-member-modal" class="sm-modal-overlay">
         <div class="sm-modal-content" style="max-width: 900px;">
             <div class="sm-modal-header"><h3>تسجيل عضو جديد</h3><button class="sm-modal-close" onclick="document.getElementById('add-single-member-modal').style.display='none'">&times;</button></div>
@@ -325,13 +330,14 @@ if ($import_results) {
                         <label class="sm-label">كلمة مرور جديدة (اتركها فارغة إذا لم ترد التغيير):</label>
                         <input name="password" type="password" class="sm-input">
                     </div>
-                    <?php if (current_user_can('sm_full_access') || current_user_can('manage_options')): ?>
+                    <?php if (current_user_can('manage_options')): ?>
                     <div class="sm-form-group">
                         <label class="sm-label">الدور / الصلاحيات:</label>
                         <select name="role" id="acc_role" class="sm-select">
-                            <option value="sm_syndicate_member">عضو نقابة (افتراضي)</option>
-                            <option value="sm_syndicate_admin">مسؤول نقابة</option>
-                            <option value="sm_system_admin">مدير نظام</option>
+                            <option value="sm_member">عضو نقابة (افتراضي)</option>
+                            <option value="sm_branch_officer">مسؤول نقابة</option>
+                            <option value="sm_general_officer">مسؤول النقابة العامة</option>
+                            <option value="administrator">مدير نظام</option>
                         </select>
                     </div>
                     <?php endif; ?>

@@ -142,7 +142,7 @@ class SM_Messaging_Manager {
             wp_send_json_error(['message' => 'No governorate assigned']);
         }
 
-        if (in_array('sm_syndicate_member', (array)$user->roles)) {
+        if (in_array('sm_member', (array)$user->roles)) {
             $offs = SM_DB::get_governorate_officials($gov);
             $data = [];
             foreach($offs as $o) {
@@ -265,7 +265,7 @@ class SM_Messaging_Manager {
         }
         $user = wp_get_current_user();
         if (!current_user_can('sm_full_access') && !current_user_can('manage_options')) {
-            if (in_array('sm_syndicate_admin', $user->roles)) {
+            if (current_user_can('sm_branch_access')) {
                 $gov = get_user_meta($user->ID, 'sm_governorate', true);
                 if ($gov && $ticket->province !== $gov) {
                     wp_send_json_error(['message' => 'Access denied']);
@@ -317,7 +317,7 @@ class SM_Messaging_Manager {
         ]);
             if ($rid) {
                 $sender = wp_get_current_user();
-                $is_official_reply = !in_array('sm_syndicate_member', $sender->roles);
+                $is_official_reply = current_user_can('sm_branch_access') || current_user_can('sm_full_access');
 
                 if ($is_official_reply) {
                     SM_DB::update_ticket_status($tid, 'in-progress');

@@ -5,7 +5,7 @@ $is_officer = current_user_can('sm_manage_members') || current_user_can('manage_
 // Check for active surveys for current user role
 $user_role = !empty(wp_get_current_user()->roles) ? wp_get_current_user()->roles[0] : '';
 $member_specialty = '';
-if (in_array('sm_syndicate_member', (array)wp_get_current_user()->roles)) {
+if (in_array('sm_member', (array)wp_get_current_user()->roles)) {
     $current_mem = SM_DB_Members::get_member_by_wp_user_id(get_current_user_id());
     if ($current_mem) $member_specialty = $current_mem->specialization;
 }

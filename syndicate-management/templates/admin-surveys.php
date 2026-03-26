@@ -17,8 +17,9 @@
     global $wpdb;
     $user = wp_get_current_user();
     $roles = (array)$user->roles;
-    $is_sys_admin = in_array('sm_system_admin', $roles) || current_user_can('manage_options');
-    $is_syndicate_admin = in_array('sm_syndicate_admin', $roles);
+    $is_sys_admin = in_array('administrator', $roles) || current_user_can('manage_options');
+    $is_general_officer = in_array('sm_general_officer', $roles);
+    $is_branch_officer = in_array('sm_branch_officer', $roles);
     $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
     $test_type_map = ['practice' => 'مزاولة مهنة', 'promotion' => 'ترقية درجة', 'training' => 'دورة تدريبية'];
     $db_branches = SM_DB::get_branches_data();
@@ -252,9 +253,9 @@
                     <label class="sm-label">الفئة المستهدفة بالظهور التلقائي:</label>
                     <select id="survey_recipients" class="sm-select">
                         <option value="all">الجميع</option>
-                        <option value="sm_member">الأعضاء فقط</option>
-                        <option value="sm_syndicate_member">أعضاء النقابة فقط</option>
-                        <option value="sm_syndicate_admin">مسؤولو النقابة فقط</option>
+                        <option value="sm_member">أعضاء النقابة</option>
+                        <option value="sm_general_officer">مسؤولو النقابة العامة</option>
+                        <option value="sm_branch_officer">مسؤولو الفروع</option>
                     </select>
                 </div>
                 <div class="sm-form-group">
@@ -357,7 +358,7 @@
                 <label class="sm-label">اختر المستخدمين (يمكنك اختيار أكثر من واحد):</label>
                 <select id="assign_user_ids" class="sm-select" multiple style="height: 200px;">
                     <?php
-                    $all_users = get_users(['role__in' => ['sm_member', 'sm_syndicate_member']]);
+                    $all_users = get_users(['role__in' => ['sm_member', 'sm_branch_officer', 'sm_general_officer']]);
                     foreach($all_users as $u) {
                         echo "<option value='{$u->ID}'>{$u->display_name} ({$u->user_login})</option>";
                     }

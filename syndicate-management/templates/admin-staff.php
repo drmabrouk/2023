@@ -5,14 +5,14 @@
             <h3 style="margin:0; border:none; padding:0; font-weight: 900; color: var(--sm-dark-color);">مركز التحكم بمستخدمي النظام</h3>
             <p style="margin: 5px 0 0 0; font-size: 12px; color: #64748b;">إدارة شاملة لكافة حسابات المسؤولين، الموظفين، وأعضاء النقابة</p>
         </div>
-        <?php if (current_user_can('sm_manage_users') || current_user_can('manage_options')): ?>
-            <div style="display:flex; gap:10px;">
-                <button onclick="smExportUsers()" class="sm-btn sm-btn-outline" style="width:auto;"><span class="dashicons dashicons-download" style="margin-top:4px;"></span> تصدير البيانات</button>
+        <div style="display:flex; gap:10px;">
+            <button onclick="smExportUsers()" class="sm-btn sm-btn-outline" style="width:auto;"><span class="dashicons dashicons-download" style="margin-top:4px;"></span> تصدير البيانات</button>
+            <?php if (current_user_can('sm_manage_system')): ?>
                 <button onclick="document.getElementById('staff-csv-import-form').style.display='block'" class="sm-btn" style="width:auto; background:var(--sm-secondary-color);"><span class="dashicons dashicons-upload" style="margin-top:4px;"></span> استيراد (CSV)</button>
                 <button onclick="document.getElementById('add-staff-modal').style.display='flex'" class="sm-btn" style="width:auto;"><span class="dashicons dashicons-plus-alt" style="margin-top:4px;"></span> إضافة مستخدم</button>
                 <button onclick="executeBulkDeleteUsers()" class="sm-btn" style="width:auto; background:#e53e3e; padding: 0 15px;"><span class="dashicons dashicons-trash" style="margin-top:4px;"></span> حذف محدد</button>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div id="staff-csv-import-form" style="display:none; background: #f8fafc; padding: 30px; border: 2px dashed #cbd5e0; border-radius: 12px; margin-bottom: 20px;">
@@ -61,20 +61,19 @@
 
     <?php
     $current_user = wp_get_current_user();
-    $is_sys_manager = in_array('sm_system_admin', (array)$current_user->roles);
-    $is_syndicate_admin = in_array('sm_syndicate_admin', (array)$current_user->roles);
+    $is_sys_manager = current_user_can('sm_manage_system');
+    $is_syndicate_admin = current_user_can('sm_full_access') && !$is_sys_manager;
     $my_gov = get_user_meta($current_user->ID, 'sm_governorate', true);
     $db_branches = SM_DB::get_branches_data();
     ?>
 
-    <?php if ($is_sys_manager): ?>
     <div class="sm-tabs-wrapper" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee;">
         <a href="<?php echo remove_query_arg('role_filter'); ?>" class="sm-tab-btn <?php echo empty($_GET['role_filter']) ? 'sm-active' : ''; ?>" style="text-decoration:none;">الكل</a>
-        <a href="<?php echo add_query_arg('role_filter', 'sm_system_admin'); ?>" class="sm-tab-btn <?php echo ($_GET['role_filter'] ?? '') == 'sm_system_admin' ? 'sm-active' : ''; ?>" style="text-decoration:none;">مدير النظام</a>
-        <a href="<?php echo add_query_arg('role_filter', 'sm_syndicate_admin'); ?>" class="sm-tab-btn <?php echo ($_GET['role_filter'] ?? '') == 'sm_syndicate_admin' ? 'sm-active' : ''; ?>" style="text-decoration:none;">مسؤول نقابة</a>
-        <a href="<?php echo add_query_arg('role_filter', 'sm_syndicate_member'); ?>" class="sm-tab-btn <?php echo ($_GET['role_filter'] ?? '') == 'sm_syndicate_member' ? 'sm-active' : ''; ?>" style="text-decoration:none;">عضو نقابة</a>
+        <a href="<?php echo add_query_arg('role_filter', 'administrator'); ?>" class="sm-tab-btn <?php echo ($_GET['role_filter'] ?? '') == 'administrator' ? 'sm-active' : ''; ?>" style="text-decoration:none;">مدير النظام</a>
+        <a href="<?php echo add_query_arg('role_filter', 'sm_general_officer'); ?>" class="sm-tab-btn <?php echo ($_GET['role_filter'] ?? '') == 'sm_general_officer' ? 'sm-active' : ''; ?>" style="text-decoration:none;">مسؤول النقابة العامة</a>
+        <a href="<?php echo add_query_arg('role_filter', 'sm_branch_officer'); ?>" class="sm-tab-btn <?php echo ($_GET['role_filter'] ?? '') == 'sm_branch_officer' ? 'sm-active' : ''; ?>" style="text-decoration:none;">مسؤول نقابة</a>
+        <a href="<?php echo add_query_arg('role_filter', 'sm_member'); ?>" class="sm-tab-btn <?php echo ($_GET['role_filter'] ?? '') == 'sm_member' ? 'sm-active' : ''; ?>" style="text-decoration:none;">عضو النقابة</a>
     </div>
-    <?php endif; ?>
 
     <div style="background: white; padding: 25px; border: 1px solid var(--sm-border-color); border-radius: var(--sm-radius); margin-bottom: 25px; box-shadow: var(--sm-shadow);">
         <form method="get" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
@@ -141,9 +140,10 @@
             <tbody>
                 <?php 
                 $role_labels = array(
-                    'sm_system_admin' => 'مدير النظام',
-                    'sm_syndicate_admin' => 'مسؤول نقابة',
-                    'sm_syndicate_member' => 'عضو نقابة'
+                    'administrator' => 'مدير النظام',
+                    'sm_general_officer' => 'مسؤول النقابة العامة',
+                    'sm_branch_officer' => 'مسؤول نقابة',
+                    'sm_member' => 'عضو النقابة'
                 );
 
                 $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
@@ -233,15 +233,14 @@
                                     <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
                                         <div class="sm-form-group">
                                             <label class="sm-label">الاسم المعروض (Display Name):</label>
-                                            <input type="text" name="display_name" value="<?php echo esc_attr($u->display_name); ?>" class="sm-input" required>
+                                            <input type="text" name="display_name" value="<?php echo esc_attr($u->display_name); ?>" class="sm-input" required <?php echo !current_user_can('sm_manage_system') ? 'disabled' : ''; ?>>
                                         </div>
                                         <div class="sm-form-group">
                                             <label class="sm-label">الدور الوظيفي / الصلاحيات:</label>
-                                            <select name="role" class="sm-select" onchange="smToggleRankField(this, 'rank-group-<?php echo $u->ID; ?>')">
+                                            <select name="role" class="sm-select" onchange="smToggleRankField(this, 'rank-group-<?php echo $u->ID; ?>')" <?php echo !current_user_can('sm_manage_system') ? 'disabled' : ''; ?>>
                                                 <?php
-                                                $roles_obj = wp_roles();
-                                                foreach($roles_obj->roles as $rk => $rd): ?>
-                                                    <option value="<?php echo esc_attr($rk); ?>" <?php selected($role_slug, $rk); ?>><?php echo esc_html(function_exists('translate_user_role') ? translate_user_role($rd['name']) : $rd['name']); ?></option>
+                                                foreach($role_labels as $rk => $rl): ?>
+                                                    <option value="<?php echo esc_attr($rk); ?>" <?php selected($role_slug, $rk); ?>><?php echo esc_html($rl); ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
@@ -401,9 +400,8 @@
                         <label class="sm-label">الدور الوظيفي:</label>
                         <select name="role" class="sm-select">
                             <?php
-                            $roles_obj = wp_roles();
-                            foreach($roles_obj->roles as $rk => $rd): ?>
-                                <option value="<?php echo esc_attr($rk); ?>" <?php selected($rk, 'sm_syndicate_member'); ?>><?php echo esc_html(function_exists('translate_user_role') ? translate_user_role($rd['name']) : $rd['name']); ?></option>
+                            foreach($role_labels as $rk => $rl): ?>
+                                <option value="<?php echo esc_attr($rk); ?>" <?php selected($rk, 'sm_member'); ?>><?php echo esc_html($rl); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -461,7 +459,7 @@
     window.smToggleRankField = function(roleSelect, groupId) {
         const group = document.getElementById(groupId);
         if (!group) return;
-        if (roleSelect.value === 'sm_syndicate_member' || roleSelect.value === 'sm_member') {
+        if (roleSelect.value === 'sm_member') {
             group.style.display = 'block';
         } else {
             group.style.display = 'none';
