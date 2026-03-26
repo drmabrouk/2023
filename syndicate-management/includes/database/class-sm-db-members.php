@@ -59,7 +59,13 @@ class SM_DB_Members {
         global $wpdb;
         $table_name = $wpdb->prefix . 'sm_members';
         $is_deleted = isset($args['is_deleted']) ? intval($args['is_deleted']) : 0;
-        $where = "is_deleted = $is_deleted";
+
+        if ($is_deleted === 0) {
+            $where = "($table_name.is_deleted = 0 OR $table_name.is_deleted IS NULL)";
+        } else {
+            $where = "$table_name.is_deleted = 1";
+        }
+
         $params = array();
 
         $limit = isset($args['limit']) ? intval($args['limit']) : 20;
@@ -138,7 +144,7 @@ class SM_DB_Members {
         $orderby = 'sort_order ASC, name ASC';
         if (!empty($args['orderby']) && in_array($args['orderby'], $allowed_orderby)) {
             $order = (!empty($args['order']) && strtoupper($args['order']) === 'DESC') ? 'DESC' : 'ASC';
-            $orderby = sanitize_sql_orderby($args['orderby'] . " " . $order);
+            $orderby = "`" . $args['orderby'] . "` " . $order;
         }
 
         $query = "SELECT * FROM $table_name WHERE $where ORDER BY $orderby";
@@ -200,11 +206,18 @@ class SM_DB_Members {
 
     public static function count_members($args = []) {
         global $wpdb;
+        $table_name = $wpdb->prefix . 'sm_members';
         $user = wp_get_current_user();
         $has_full_access = current_user_can('manage_options') || current_user_can('sm_full_access');
 
         $is_deleted = isset($args['is_deleted']) ? intval($args['is_deleted']) : 0;
-        $where = "is_deleted = $is_deleted";
+
+        if ($is_deleted === 0) {
+            $where = "($table_name.is_deleted = 0 OR $table_name.is_deleted IS NULL)";
+        } else {
+            $where = "$table_name.is_deleted = 1";
+        }
+
         $params = [];
 
         if (!$has_full_access) {

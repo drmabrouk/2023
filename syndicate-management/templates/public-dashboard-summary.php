@@ -112,7 +112,7 @@ function smStartProfessionalTest(s) {
             if(window.activeAssignmentId > 0) fd.append('assignment_id', window.activeAssignmentId);
             fd.append('type', 'start');
             fd.append('details', 'بدء الاختبار من الواجهة');
-            fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
+            fd.append('nonce', '<?php echo wp_create_nonce("sm_test_nonce"); ?>');
             fetch(ajaxurl + '?action=' + fd.get('action'), {method:'POST', body:fd});
         } else {
             smHandleAjaxError(res);
@@ -330,7 +330,7 @@ function smSyncProgress() {
     if(window.activeAssignmentId) fd.append('assignment_id', window.activeAssignmentId);
     fd.append('survey_id', activeTestId);
     fd.append('progress', JSON.stringify(responses));
-    fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
+    fd.append('nonce', '<?php echo wp_create_nonce("sm_test_nonce"); ?>');
     fetch(ajaxurl + '?action=sm_sync_test_progress', {method:'POST', body:fd})
     .then(r=>r.json()).then(res => {
         if(res.success && res.data.status === 'terminated') {
@@ -353,7 +353,7 @@ function smFinishTest() {
     fd.append('survey_id', activeTestId);
     if(window.activeAssignmentId) fd.append('assignment_id', window.activeAssignmentId);
     fd.append('responses', JSON.stringify(responses));
-    fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
+    fd.append('nonce', '<?php echo wp_create_nonce("sm_test_nonce"); ?>');
 
     document.getElementById('submit-test-btn').disabled = true;
     document.getElementById('submit-test-btn').innerText = 'جاري التصحيح وحفظ النتائج...';
@@ -410,7 +410,7 @@ function smLogSecurityAction(msg, type) {
     if(window.activeAssignmentId) fd.append('assignment_id', window.activeAssignmentId);
     fd.append('type', type);
     fd.append('details', msg);
-    fd.append('nonce', '<?php echo wp_create_nonce("sm_survey_action"); ?>');
+    fd.append('nonce', '<?php echo wp_create_nonce("sm_test_nonce"); ?>');
     fetch(ajaxurl + '?action=sm_log_test_action', {method:'POST', body:fd});
 }
 

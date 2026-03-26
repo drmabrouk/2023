@@ -546,18 +546,32 @@ if ($import_results) {
         if (addMemberForm) {
             addMemberForm.onsubmit = function(e) {
                 e.preventDefault();
+                const btn = this.querySelector('button[type="submit"]');
+                if (btn) { btn.disabled = true; btn.innerText = 'جاري الإضافة...'; }
+
                 const action = 'sm_add_member_ajax';
                 const formData = new FormData(this);
                 if (!formData.has('action')) formData.append('action', action);
+
                 fetch(ajaxurl + '?action=' + action, { method: 'POST', body: formData })
                 .then(r => {
                     if (!r.ok) throw r;
                     return r.json();
                 })
                 .then(res => {
-                    if(res.success) location.reload();
-                    else smHandleAjaxError(res);
-                }).catch(err => smHandleAjaxError(err));
+                    if(res.success) {
+                        smShowNotification('تم إضافة العضو بنجاح');
+                        setTimeout(() => {
+                            location.href = location.pathname + '?page=' + (new URLSearchParams(window.location.search).get('page') || '') + '&sm_tab=members';
+                        }, 800);
+                    } else {
+                        smHandleAjaxError(res);
+                        if (btn) { btn.disabled = false; btn.innerText = 'إضافة العضو'; }
+                    }
+                }).catch(err => {
+                    smHandleAjaxError(err);
+                    if (btn) { btn.disabled = false; btn.innerText = 'إضافة العضو'; }
+                });
             };
         }
 

@@ -214,6 +214,13 @@ $acc_status = SM_Finance::get_member_status($member->id);
                     <div style="grid-column: span 2;"><label class="sm-label">العنوان (الشارع / القرية):</label> <div class="sm-value"><?php echo esc_html($member->residence_street); ?></div></div>
                     <div><label class="sm-label">الفرع النقابي التابع له:</label> <div class="sm-value"><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></div></div>
                 </div>
+
+                <?php if ($member->notes): ?>
+                <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <label class="sm-label">ملاحظات إضافية:</label>
+                    <div style="font-size: 13px; color: #4a5568; line-height: 1.6; white-space: pre-wrap;"><?php echo esc_html($member->notes); ?></div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 

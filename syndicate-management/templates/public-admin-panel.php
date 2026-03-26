@@ -1188,7 +1188,7 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     </li>
                 <?php endif; ?>
 
-                <?php if ($is_admin || $is_general_officer): ?>
+                <?php if ($is_admin || $is_general_officer || $is_branch_officer): ?>
                     <li class="sm-sidebar-item <?php echo $active_tab == 'branches' ? 'sm-active' : ''; ?>">
                         <a href="<?php echo add_query_arg(['sm_tab' => 'branches']); ?>" class="sm-sidebar-link"><span class="dashicons dashicons-networking"></span> فروع النقابة</a>
                     </li>
@@ -1333,7 +1333,7 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
                     break;
 
                 case 'branches':
-                    if ($is_admin || $is_general_officer) {
+                    if ($is_admin || $is_general_officer || $is_branch_officer) {
                         include SM_PLUGIN_DIR . 'templates/admin-branches.php';
                     }
                     break;

@@ -94,6 +94,9 @@ $current_user_gov = get_user_meta(get_current_user_id(), 'sm_governorate', true)
                             <?php if ($can_edit): ?>
                                 <button onclick='smEditBranch(<?php echo esc_attr(json_encode($b)); ?>)' class="sm-btn" style="padding:6px 12px; font-size:11px; width:auto; height:auto;">تعديل</button>
                             <?php endif; ?>
+                            <?php if ($can_manage_all): ?>
+                                <button onclick="smDeleteBranch(<?php echo $b->id; ?>, '<?php echo esc_js($b->name); ?>')" class="sm-btn" style="padding:6px 12px; font-size:11px; width:auto; height:auto; background:#e53e3e;">حذف</button>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <h3 style="margin:0 0 5px 0; font-weight:800; color:var(--sm-dark-color);"><?php echo esc_html($b->name); ?></h3>
@@ -481,4 +484,24 @@ document.getElementById('sm-branch-form')?.addEventListener('submit', function(e
         btn.innerText = 'حفظ وتطبيق التغييرات';
     });
 });
+
+window.smDeleteBranch = function(id, name) {
+    if (!confirm('هل أنت متأكد من حذف فرع "' + name + '" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+
+    const fd = new FormData();
+    fd.append('action', 'sm_delete_branch');
+    fd.append('id', id);
+    fd.append('nonce', '<?php echo wp_create_nonce("sm_admin_action"); ?>');
+
+    fetch(ajaxurl + '?action=sm_delete_branch', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            smShowNotification('تم حذف الفرع بنجاح');
+            location.reload();
+        } else {
+            smHandleAjaxError(res);
+        }
+    }).catch(err => smHandleAjaxError(err));
+};
 </script>

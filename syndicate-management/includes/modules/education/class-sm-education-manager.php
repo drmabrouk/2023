@@ -275,9 +275,9 @@ class SM_Education_Manager {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
             if (isset($_POST['nonce'])) {
-                check_ajax_referer('sm_survey_action', 'nonce');
+                check_ajax_referer('sm_test_nonce', 'nonce');
             } else {
-                check_ajax_referer('sm_survey_action', '_wpnonce');
+                check_ajax_referer('sm_test_nonce', '_wpnonce');
             }
 
         $sid = intval($_POST['survey_id']);

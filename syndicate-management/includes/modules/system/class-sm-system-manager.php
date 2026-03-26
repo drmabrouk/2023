@@ -68,7 +68,7 @@ class SM_System_Manager {
     public static function ajax_delete_branch() {
         try {
             if (!current_user_can('sm_full_access') && !current_user_can('manage_options')) {
-                wp_send_json_error(['message' => 'Unauthorized: لا يملك مسؤول الفرع صلاحية الحذف.']);
+                wp_send_json_error(['message' => 'Unauthorized: عذراً، صلاحية حذف الفروع مقتصرة على الإدارة العامة ومدير النظام فقط.']);
             }
             if (isset($_POST['nonce'])) {
                 check_ajax_referer('sm_admin_action', 'nonce');
