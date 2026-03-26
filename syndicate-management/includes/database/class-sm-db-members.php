@@ -58,7 +58,8 @@ class SM_DB_Members {
     public static function get_members($args = array()) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'sm_members';
-        $where = "1=1";
+        $is_deleted = isset($args['is_deleted']) ? intval($args['is_deleted']) : 0;
+        $where = "is_deleted = $is_deleted";
         $params = array();
 
         $limit = isset($args['limit']) ? intval($args['limit']) : 20;
@@ -202,7 +203,8 @@ class SM_DB_Members {
         $user = wp_get_current_user();
         $has_full_access = current_user_can('manage_options') || current_user_can('sm_full_access');
 
-        $where = "1=1";
+        $is_deleted = isset($args['is_deleted']) ? intval($args['is_deleted']) : 0;
+        $where = "is_deleted = $is_deleted";
         $params = [];
 
         if (!$has_full_access) {
@@ -407,10 +409,37 @@ class SM_DB_Members {
 
     public static function delete_member($id) {
         global $wpdb;
+        $table_name = $wpdb->prefix . 'sm_members';
 
         $member = self::get_member_by_id($id);
         if ($member) {
-            SM_Logger::log('حذف عضو (مع إمكانية الاستعادة)', 'ROLLBACK_DATA:' . json_encode(['table' => 'members', 'data' => (array)$member]));
+            $user = wp_get_current_user();
+            $role_names = [
+                'administrator' => 'مدير النظام',
+                'sm_general_officer' => 'مسؤول النقابة العامة',
+                'sm_branch_officer' => 'مسؤول نقابة فرعي'
+            ];
+            $my_role = reset($user->roles);
+            $role_label = $role_names[$my_role] ?? $my_role;
+
+            SM_Logger::log('أرشفة عضو (حذف مؤقت)', "قام $role_label ({$user->display_name}) بنقل العضو {$member->name} إلى سلة المحذوفات.");
+
+            // Soft delete
+            return $wpdb->update($table_name, ['is_deleted' => 1], ['id' => $id]);
+        }
+
+        return false;
+    }
+
+    public static function permanent_delete_member($id) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'sm_members';
+
+        $member = self::get_member_by_id($id);
+        if ($member) {
+            $user = wp_get_current_user();
+            SM_Logger::log('حذف عضو نهائي', "قام مدير النظام ({$user->display_name}) بحذف سجل العضو {$member->name} نهائياً من النظام.");
+
             if ($member->wp_user_id) {
                 if (!function_exists('wp_delete_user')) {
                     require_once(ABSPATH . 'wp-admin/includes/user.php');
@@ -418,9 +447,24 @@ class SM_DB_Members {
                 wp_delete_user($member->wp_user_id);
             }
             SM_Finance::invalidate_financial_caches($member->governorate ?? null);
+            return $wpdb->delete($table_name, array('id' => $id));
         }
 
-        return $wpdb->delete($wpdb->prefix . 'sm_members', array('id' => $id));
+        return false;
+    }
+
+    public static function restore_member($id) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'sm_members';
+
+        $member = self::get_member_by_id($id);
+        if ($member) {
+            $user = wp_get_current_user();
+            SM_Logger::log('استعادة عضو', "تمت استعادة العضو {$member->name} من سلة المحذوفات بواسطة {$user->display_name}.");
+            return $wpdb->update($table_name, ['is_deleted' => 0], ['id' => $id]);
+        }
+
+        return false;
     }
 
     public static function member_exists($national_id) {
