@@ -497,13 +497,17 @@ class SM_Public {
     }
 
     public static function ajax_get_user_role() {
-        if (!current_user_can('sm_manage_users')) {
+        if (!current_user_can('sm_manage_users') && !current_user_can('manage_options')) {
             wp_send_json_error('Unauthorized');
         }
         check_ajax_referer('sm_admin_action', 'nonce');
         $u = get_userdata(intval($_GET['user_id']));
         if ($u) {
-            wp_send_json_success(['role' => !empty($u->roles) ? $u->roles[0] : '']);
+            wp_send_json_success([
+                'role' => !empty($u->roles) ? $u->roles[0] : '',
+                'rank' => get_user_meta($u->ID, 'sm_rank', true),
+                'governorate' => get_user_meta($u->ID, 'sm_governorate', true)
+            ]);
         } else {
             wp_send_json_error('User not found');
         }

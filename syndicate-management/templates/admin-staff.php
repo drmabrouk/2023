@@ -253,6 +253,17 @@
                                                 ?>
                                             </select>
                                         </div>
+                                        <div class="sm-form-group" id="rank-group-<?php echo $u->ID; ?>" style="<?php echo ($role_slug === 'sm_member') ? 'display:none;' : 'display:block;'; ?>">
+                                            <label class="sm-label">الرتبة / المسمى النقابي:</label>
+                                            <select name="rank" class="sm-select">
+                                                <option value="">-- اختر الرتبة --</option>
+                                                <?php
+                                                foreach(SM_Settings::get_professional_grades() as $rk => $rv) {
+                                                    echo "<option value='".esc_attr($rk)."' ".selected($user_data_attr['rank'], $rk, false).">".esc_html($rv)."</option>";
+                                                }
+                                                ?>
+                                            </select>
+                                        </div>
                                         <div class="sm-form-group">
                                             <label class="sm-label">حالة الحساب الإلكتروني:</label>
                                             <select name="account_status" class="sm-select">
@@ -412,6 +423,13 @@
                             <?php foreach($db_branches as $db) echo "<option value='".esc_attr($db->slug)."'>".esc_html($db->name)."</option>"; ?>
                         </select>
                     </div>
+                    <div class="sm-form-group" id="add-rank-group" style="display:none;">
+                        <label class="sm-label">الرتبة / المسمى النقابي:</label>
+                        <select name="rank" class="sm-select">
+                            <option value="">-- اختر الرتبة --</option>
+                            <?php foreach(SM_Settings::get_professional_grades() as $rk => $rv) echo "<option value='".esc_attr($rk)."'>".esc_html($rv)."</option>"; ?>
+                        </select>
+                    </div>
                     <div class="sm-form-group"><label class="sm-label">رقم التواصل:</label><input type="text" name="phone" class="sm-input"></div>
                 </div>
 
@@ -459,14 +477,26 @@
     window.smToggleRankField = function(roleSelect, groupId) {
         const group = document.getElementById(groupId);
         if (!group) return;
+        // Rank is for Officers (General and Branch), hide for members
         if (roleSelect.value === 'sm_member') {
-            group.style.display = 'block';
-        } else {
             group.style.display = 'none';
             const select = group.querySelector('select');
             if (select) select.value = '';
+        } else {
+            group.style.display = 'block';
         }
     };
+
+    // Initialize rank toggle for Add form
+    document.querySelector('#add-staff-modal select[name="role"]')?.addEventListener('change', function() {
+        const group = document.getElementById('add-rank-group');
+        if (this.value === 'sm_member') {
+            group.style.display = 'none';
+            group.querySelector('select').value = '';
+        } else {
+            group.style.display = 'block';
+        }
+    });
 
     function toggleAllUsers(master) {
         document.querySelectorAll('.user-cb').forEach(cb => cb.checked = master.checked);
@@ -525,6 +555,23 @@
             document.querySelectorAll('.edit-panel-row').forEach(p => p.style.display = 'none');
             if (!isVisible) {
                 panel.style.display = 'table-row';
+
+                // Fetch latest data to ensure rank and gov are correct
+                const action = 'sm_get_user_role';
+                fetch(ajaxurl + '?action=' + action + '&user_id=' + userId + '&nonce=<?php echo wp_create_nonce("sm_admin_action"); ?>')
+                .then(r => r.json()).then(res => {
+                    if (res.success && res.data) {
+                        const form = panel.querySelector('form');
+                        if (form) {
+                            form.role.value = res.data.role || '';
+                            form.governorate.value = res.data.governorate || '';
+                            if (form.rank) {
+                                form.rank.value = res.data.rank || '';
+                                smToggleRankField(form.role, 'rank-group-' + userId);
+                            }
+                        }
+                    }
+                });
             }
         };
 
