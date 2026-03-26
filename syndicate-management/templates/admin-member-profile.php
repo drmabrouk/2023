@@ -44,6 +44,9 @@ $acc_status = SM_Finance::get_member_status($member->id);
 ?>
 
 <div class="sm-member-profile-view <?php echo $is_restricted ? 'sm-portal-layout' : ''; ?>" dir="rtl">
+    <input type="file" id="member-photo-input" style="display:none;" accept="image/*" onchange="smUploadMemberPhoto(<?php echo $member->id; ?>)">
+
+    <?php if (!$is_restricted): ?>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #fff; padding: 30px; border-radius: 12px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
         <div style="display: flex; align-items: center; gap: 20px;">
             <div style="position: relative;">
@@ -57,7 +60,6 @@ $acc_status = SM_Finance::get_member_status($member->id);
                 <button onclick="smTriggerPhotoUpload()" style="position: absolute; bottom: 0; right: 0; background: var(--sm-primary-color); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                     <span class="dashicons dashicons-camera" style="font-size: 14px; width: 14px; height: 14px;"></span>
                 </button>
-                <input type="file" id="member-photo-input" style="display:none;" accept="image/*" onchange="smUploadMemberPhoto(<?php echo $member->id; ?>)">
             </div>
             <div>
                 <h2 style="margin:0; color: var(--sm-dark-color);"><?php echo esc_html($member->name); ?></h2>
@@ -68,9 +70,7 @@ $acc_status = SM_Finance::get_member_status($member->id);
             </div>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-            <?php if ($is_restricted): ?>
-                <button onclick="smOpenUpdateMemberRequestModal()" class="sm-btn" style="background: #3182ce; width: auto;"><span class="dashicons dashicons-edit"></span> طلب تحديث بياناتي</button>
-            <?php elseif (current_user_can('sm_manage_members')): ?>
+            <?php if (current_user_can('sm_manage_members')): ?>
                 <button onclick="editSmMember(JSON.parse(this.dataset.member))" data-member='<?php echo esc_attr(wp_json_encode($member)); ?>' class="sm-btn" style="background: #3182ce; width: auto;"><span class="dashicons dashicons-edit"></span> تعديل البيانات</button>
             <?php endif; ?>
 
@@ -92,6 +92,7 @@ $acc_status = SM_Finance::get_member_status($member->id);
             <?php endif; ?>
         </div>
     </div>
+    <?php endif; ?>
 
     <?php if ($is_restricted): ?>
     <div class="sm-portal-grid" style="display: flex; gap: 30px;">
@@ -99,12 +100,25 @@ $acc_status = SM_Finance::get_member_status($member->id);
         <div class="sm-portal-sidebar" style="width: 300px; flex-shrink: 0;">
             <div style="background: #fff; border: 1px solid var(--sm-border-color); border-radius: 16px; padding: 15px; position: sticky; top: 20px; box-shadow: var(--sm-shadow);">
                 <div style="padding: 15px 10px 25px; border-bottom: 1px solid #f1f5f9; margin-bottom: 15px; text-align: center;">
-                    <div style="width: 80px; height: 80px; margin: 0 auto 15px; background: #f8fafc; border-radius: 50%; border: 3px solid var(--sm-primary-color); padding: 3px;">
-                        <img src="<?php echo esc_url($member->photo_url ?: get_avatar_url($user->ID)); ?>" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                    <div style="position: relative; width: 80px; height: 80px; margin: 0 auto 15px; cursor: pointer;" onclick="smTriggerPhotoUpload()" class="sm-sidebar-photo-container">
+                        <div style="width: 100%; height: 100%; background: #f8fafc; border-radius: 50%; border: 3px solid var(--sm-primary-color); padding: 3px; overflow: hidden;">
+                            <img src="<?php echo esc_url($member->photo_url ?: get_avatar_url($user->ID)); ?>" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <div class="sm-photo-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; color: white;">
+                            <span class="dashicons dashicons-camera" style="font-size: 24px; width: 24px; height: 24px;"></span>
+                        </div>
                     </div>
                     <h4 style="margin: 0; font-weight: 900; color: var(--sm-dark-color);"><?php echo esc_html($member->name); ?></h4>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 5px;">رقم القيد: <?php echo esc_html($member->membership_number); ?></div>
+                    <div style="display: flex; flex-direction: column; gap: 5px; align-items: center; margin-top: 8px;">
+                        <span class="sm-badge sm-badge-low" style="font-size: 10px;"><?php echo $grades[$member->professional_grade] ?? $member->professional_grade; ?></span>
+                        <span class="sm-badge" style="background: #f1f5f9; color: #64748b; font-size: 10px; border: 1px solid #e2e8f0;"><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></span>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 10px;">رقم القيد: <?php echo esc_html($member->membership_number); ?></div>
                 </div>
+
+                <style>
+                    .sm-sidebar-photo-container:hover .sm-photo-overlay { opacity: 1 !important; }
+                </style>
 
                 <nav class="sm-portal-nav" style="display: flex; flex-direction: column; gap: 5px;">
                     <button class="sm-portal-nav-btn sm-active" onclick="smOpenInternalTab('profile-info', this)">
@@ -160,7 +174,12 @@ $acc_status = SM_Finance::get_member_status($member->id);
             <div style="display: flex; flex-direction: column; gap: 30px;">
                 <!-- Basic Info -->
                 <div style="background: #fff; padding: 30px; border-radius: 12px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
-                <h3 style="margin-top:0; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">البيانات الأساسية والأكاديمية</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+                    <h3 style="margin:0;">البيانات الأساسية والأكاديمية</h3>
+                    <?php if ($is_restricted): ?>
+                        <button onclick="smOpenUpdateMemberRequestModal()" class="sm-btn" style="background: #3182ce; width: auto; height: 32px; font-size: 12px; padding: 0 15px;"><span class="dashicons dashicons-edit" style="font-size: 16px; margin-top: 4px;"></span> طلب تحديث بياناتي</button>
+                    <?php endif; ?>
+                </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div><label class="sm-label">الرقم القومي:</label> <div class="sm-value"><?php echo esc_html($member->national_id); ?></div></div>
                     <div><label class="sm-label">كود العضوية:</label> <div class="sm-value"><?php echo esc_html($member->membership_number); ?></div></div>
@@ -224,9 +243,16 @@ $acc_status = SM_Finance::get_member_status($member->id);
                     <div style="display: flex; justify-content: space-between;"><span>المبلغ المطلوب سداده:</span> <strong><?php echo number_format($finance['total_owed'], 2); ?></strong></div>
                     <div style="display: flex; justify-content: space-between;"><span>إجمالي ما تم سداده:</span> <strong style="color:#38a169;"><?php echo number_format($finance['total_paid'], 2); ?></strong></div>
                 </div>
-                    <button onclick="smOpenFinanceModal(<?php echo $member->id; ?>)" class="sm-btn" style="margin-top: 20px; background: var(--sm-dark-color);">
+
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                    <button onclick="smOpenFinanceModal(<?php echo $member->id; ?>)" class="sm-btn" style="background: var(--sm-dark-color);">
                         <?php echo (current_user_can('sm_manage_finance')) ? 'إدارة المدفوعات والفواتير' : 'عرض كشف الحساب'; ?>
                     </button>
+                    <?php if ($is_restricted): ?>
+                        <button onclick="smOpenInternalTab('finance-management', document.querySelector('[onclick*=\'finance-management\']'))" class="sm-btn sm-btn-outline" style="background: #f8fafc; border-color: #e2e8f0; color: var(--sm-dark-color); font-weight: 700;">
+                            <span class="dashicons dashicons-media-spreadsheet" style="font-size: 18px; margin-top: 3px;"></span> المعاملات المالية
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

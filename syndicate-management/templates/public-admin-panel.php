@@ -977,9 +977,11 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
         </div>
 
         <div style="display: flex; align-items: center; gap: 20px;">
-            <div class="sm-header-info-box" style="text-align: right; border-left: 1px solid var(--sm-border-color); padding-left: 15px;">
-                <div style="font-size: 0.85em; font-weight: 700; color: var(--sm-dark-color);"><?php echo date_i18n('l j F Y'); ?></div>
-            </div>
+            <?php if (!$is_restricted): ?>
+                <div class="sm-header-info-box" style="text-align: right; border-left: 1px solid var(--sm-border-color); padding-left: 15px;">
+                    <div style="font-size: 0.85em; font-weight: 700; color: var(--sm-dark-color);"><?php echo date_i18n('l j F Y'); ?></div>
+                </div>
+            <?php endif; ?>
 
             <?php if ($is_admin || $is_general_officer || $is_branch_officer): ?>
                 <div style="display: flex; gap: 10px;">
