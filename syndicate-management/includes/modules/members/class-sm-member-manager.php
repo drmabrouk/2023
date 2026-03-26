@@ -234,13 +234,62 @@ class SM_Member_Manager {
             $id = intval($_POST['member_id']);
             self::validate_member_access($id);
             $old = SM_DB::get_member_by_id($id);
-            SM_DB::delete_member($id);
 
-            delete_transient('sm_stats_global');
-            if ($old) delete_transient('sm_stats_' . $old->governorate);
-            SM_Finance::invalidate_financial_caches($old ? $old->governorate : null);
+            if (SM_DB::delete_member($id)) {
+                delete_transient('sm_stats_global');
+                if ($old) delete_transient('sm_stats_' . $old->governorate);
+                SM_Finance::invalidate_financial_caches($old ? $old->governorate : null);
+                wp_send_json_success(['message' => 'تم نقل العضو إلى المحذوفات بنجاح']);
+            } else {
+                wp_send_json_error(['message' => 'فشل في نقل العضو للمحذوفات']);
+            }
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
 
-            wp_send_json_success(['message' => 'Deleted']);
+    public static function ajax_permanent_delete_member() {
+        try {
+            // Final removal restricted to Site Manager (manage_options) only
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(['message' => 'عذراً، هذه الصلاحية لمدير النظام فقط.']);
+            }
+            check_ajax_referer('sm_delete_member', 'nonce');
+
+            $id = intval($_POST['member_id']);
+            // Global admin can delete any member, but let's keep consistency
+            $old = SM_DB::get_member_by_id($id);
+
+            if (SM_DB::permanent_delete_member($id)) {
+                delete_transient('sm_stats_global');
+                if ($old) delete_transient('sm_stats_' . $old->governorate);
+                SM_Finance::invalidate_financial_caches($old ? $old->governorate : null);
+                wp_send_json_success(['message' => 'تم حذف العضو نهائياً من النظام']);
+            } else {
+                wp_send_json_error(['message' => 'فشل الحذف النهائي']);
+            }
+        } catch (Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
+
+    public static function ajax_restore_member() {
+        try {
+            self::check_capability('sm_manage_members');
+            check_ajax_referer('sm_admin_action', 'nonce');
+
+            $id = intval($_POST['member_id']);
+            self::validate_member_access($id);
+            $old = SM_DB::get_member_by_id($id);
+
+            if (SM_DB::restore_member($id)) {
+                delete_transient('sm_stats_global');
+                if ($old) delete_transient('sm_stats_' . $old->governorate);
+                SM_Finance::invalidate_financial_caches($old ? $old->governorate : null);
+                wp_send_json_success(['message' => 'تمت استعادة العضو بنجاح']);
+            } else {
+                wp_send_json_error(['message' => 'فشل في استعادة العضو']);
+            }
         } catch (Throwable $e) {
             wp_send_json_error(['message' => $e->getMessage()]);
         }

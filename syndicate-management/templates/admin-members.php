@@ -1,6 +1,10 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <?php
 $can_manage_members = current_user_can('sm_manage_members');
+$is_admin_user = current_user_can('manage_options');
+$active_tab = $_GET['sm_tab'] ?? 'members';
+$is_deleted_view = ($active_tab === 'deleted-members');
+
 $import_results = get_transient('sm_import_results_' . get_current_user_id());
 if ($import_results) {
     delete_transient('sm_import_results_' . get_current_user_id());
@@ -13,12 +17,12 @@ if ($import_results) {
             <p style="margin:5px 0 0 0; color:#64748b; font-size:13px;">إدارة بيانات الأعضاء المسجلين، طباعة البطاقات، وعمليات الاستيراد الجماعي.</p>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-            <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'add_member')): ?>
+            <?php if (!$is_deleted_view && SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'add_member')): ?>
                 <button onclick="document.getElementById('add-single-member-modal').style.display='flex'" class="sm-btn" style="width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;">+ إضافة عضو جديد</button>
                 <button onclick="document.getElementById('csv-import-form').style.display='block'" class="sm-btn sm-btn-secondary" style="width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;">استيراد أعضاء (Excel)</button>
             <?php endif; ?>
 
-            <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'print_reports')): ?>
+            <?php if (!$is_deleted_view && SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'print_reports')): ?>
                 <button onclick="smOpenPrintCustomizer('members')" class="sm-btn" style="background: #4a5568; width: 160px; height: 42px; padding: 0; display: flex; align-items: center; justify-content: center; font-weight: 700;"><span class="dashicons dashicons-printer" style="font-size: 16px; margin-left: 8px;"></span> طباعة مخصصة</button>
                 <a href="<?php echo admin_url('admin-ajax.php?action=sm_print&print_type=id_card'); ?>" target="_blank" class="sm-btn sm-btn-accent" style="background: #27ae60; text-decoration:none; width: 160px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">طباعة كافة البطاقات</a>
             <?php endif; ?>
@@ -53,7 +57,7 @@ if ($import_results) {
     <div style="background: white; padding: 15px; border: 1px solid var(--sm-border-color); border-radius: var(--sm-radius); margin-bottom: 8px; box-shadow: var(--sm-shadow);">
         <form method="get" style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
             <input type="hidden" name="page" value="<?php echo esc_attr($_GET['page'] ?? ''); ?>">
-            <input type="hidden" name="sm_tab" value="members">
+            <input type="hidden" name="sm_tab" value="<?php echo esc_attr($active_tab); ?>">
 
             <div class="sm-form-group" style="margin-bottom:0;">
                 <label class="sm-label">بحث:</label>
@@ -145,6 +149,7 @@ if ($import_results) {
                     'professional_grade' => $_GET['grade_filter'] ?? '',
                     'specialization' => $_GET['spec_filter'] ?? '',
                     'governorate' => $_GET['gov_filter'] ?? '',
+                    'is_deleted' => $is_deleted_view ? 1 : 0,
                     'limit' => $limit,
                     'offset' => $offset
                 ));
@@ -173,12 +178,20 @@ if ($import_results) {
                             <td style="font-weight:700; color:<?php echo $finance['balance'] > 0 ? '#e53e3e' : '#38a169'; ?>;"><?php echo number_format($finance['balance'], 2); ?></td>
                             <td>
                                 <div style="display: flex; gap: 5px; justify-content: flex-end;">
-                                    <a href="<?php echo add_query_arg('sm_tab', 'member-profile'); ?>&member_id=<?php echo $member->id; ?>" class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; text-decoration:none; display:flex; align-items:center;">عرض</a>
-                                    <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'edit_member')): ?>
-                                        <button onclick='editSmMember(<?php echo esc_attr(json_encode($member)); ?>)' class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; color: #2c3e50; border-color: #2c3e50;">تعديل</button>
-                                    <?php endif; ?>
-                                    <?php if (current_user_can('manage_options')): ?>
-                                        <button onclick='smOpenMemberAccountModal(<?php echo esc_attr(json_encode(["id" => $member->id, "wp_user_id" => $member->wp_user_id, "name" => $member->name, "email" => $member->email])); ?>)' class="sm-btn" style="padding: 4px 10px; font-size: 11px; height: 28px; background: #2c3e50;">الحساب</button>
+                                    <?php if (!$is_deleted_view): ?>
+                                        <a href="<?php echo add_query_arg('sm_tab', 'member-profile'); ?>&member_id=<?php echo $member->id; ?>" class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; text-decoration:none; display:flex; align-items:center;">عرض</a>
+                                        <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'edit_member')): ?>
+                                            <button onclick='editSmMember(<?php echo esc_attr(json_encode($member)); ?>)' class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; color: #2c3e50; border-color: #2c3e50;">تعديل</button>
+                                        <?php endif; ?>
+                                        <?php if ($is_admin_user): ?>
+                                            <button onclick='smOpenMemberAccountModal(<?php echo esc_attr(json_encode(["id" => $member->id, "wp_user_id" => $member->wp_user_id, "name" => $member->name, "email" => $member->email])); ?>)' class="sm-btn" style="padding: 4px 10px; font-size: 11px; height: 28px; background: #2c3e50;">الحساب</button>
+                                        <?php endif; ?>
+                                        <button onclick="smArchiveMember(<?php echo $member->id; ?>, '<?php echo esc_js($member->name); ?>')" class="sm-btn" style="padding: 4px 10px; font-size: 11px; height: 28px; background: #e53e3e;">حذف</button>
+                                    <?php else: ?>
+                                        <button onclick="smRestoreMember(<?php echo $member->id; ?>, '<?php echo esc_js($member->name); ?>')" class="sm-btn" style="padding: 4px 10px; font-size: 11px; height: 28px; background: #38a169;">استعادة</button>
+                                        <?php if ($is_admin_user): ?>
+                                            <button onclick="smPermanentDeleteMember(<?php echo $member->id; ?>, '<?php echo esc_js($member->name); ?>')" class="sm-btn" style="padding: 4px 10px; font-size: 11px; height: 28px; background: #c53030;">حذف نهائي</button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -367,6 +380,66 @@ if ($import_results) {
 
     <script>
     (function() {
+        window.smArchiveMember = function(id, name) {
+            if (!confirm('هل أنت متأكد من نقل العضو "' + name + '" إلى الأرشيف (المحذوفات)؟')) return;
+
+            const fd = new FormData();
+            fd.append('action', 'sm_delete_member_ajax');
+            fd.append('member_id', id);
+            fd.append('nonce', '<?php echo wp_create_nonce("sm_delete_member"); ?>');
+
+            fetch(ajaxurl, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    smShowNotification(res.data.message);
+                    location.reload();
+                } else {
+                    smHandleAjaxError(res);
+                }
+            }).catch(err => smHandleAjaxError(err));
+        };
+
+        window.smRestoreMember = function(id, name) {
+            if (!confirm('هل أنت متأكد من استعادة العضو "' + name + '" إلى القائمة النشطة؟')) return;
+
+            const fd = new FormData();
+            fd.append('action', 'sm_restore_member_ajax');
+            fd.append('member_id', id);
+            fd.append('nonce', '<?php echo wp_create_nonce("sm_admin_action"); ?>');
+
+            fetch(ajaxurl, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    smShowNotification(res.data.message);
+                    location.reload();
+                } else {
+                    smHandleAjaxError(res);
+                }
+            }).catch(err => smHandleAjaxError(err));
+        };
+
+        window.smPermanentDeleteMember = function(id, name) {
+            if (!confirm('تحذير نهائي: هل أنت متأكد من حذف العضو "' + name + '" نهائياً من النظام؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف حساب المستخدم المرتبط به أيضاً.')) return;
+
+            const fd = new FormData();
+            fd.append('action', 'sm_permanent_delete_member_ajax');
+            fd.append('member_id', id);
+            fd.append('nonce', '<?php echo wp_create_nonce("sm_delete_member"); ?>');
+
+            fetch(ajaxurl, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    smShowNotification(res.data.message);
+                    location.reload();
+                } else {
+                    smHandleAjaxError(res);
+                }
+            }).catch(err => smHandleAjaxError(err));
+        };
+
         window.smCalculateDateExpiry = function(startId, endId) {
             const startEl = document.getElementById(startId);
             const endEl = document.getElementById(endId);
