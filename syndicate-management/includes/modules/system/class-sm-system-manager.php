@@ -13,7 +13,7 @@ class SM_System_Manager {
     public static function ajax_save_branch() {
         try {
             $can_manage_all = current_user_can('sm_full_access') || current_user_can('manage_options');
-            $is_officer = in_array('sm_syndicate_admin', (array)wp_get_current_user()->roles);
+            $is_officer = current_user_can('sm_branch_access') && !$can_manage_all;
 
             if (!$can_manage_all && !$is_officer) {
                 wp_send_json_error(['message' => 'Unauthorized: User lacks required management capabilities.']);
@@ -243,7 +243,7 @@ class SM_System_Manager {
                     'user_email' => $data['email'] ?: $data['national_id'] . '@irseg.org',
                     'display_name' => $data['name'],
                     'user_pass' => $tp,
-                    'role' => 'sm_syndicate_member'
+                    'role' => 'sm_member'
                 ]);
                 if (is_wp_error($uid)) {
                     wp_send_json_error($uid->get_error_message());
@@ -355,7 +355,7 @@ class SM_System_Manager {
                 'user_email' => $row['email'] ?: $row['national_id'] . '@irseg.org',
                 'display_name' => $row['name'],
                 'user_pass' => $tp,
-                'role' => 'sm_syndicate_member'
+                'role' => 'sm_member'
             ]);
             if (!is_wp_error($uid)) {
                 $row['wp_user_id'] = $uid;

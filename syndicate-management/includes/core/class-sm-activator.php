@@ -803,63 +803,64 @@ class SM_Activator {
     }
 
     private static function setup_roles() {
-        $sm_capabilities = array(
-            'read' => true,
-            'manage_options' => true,
-            'sm_manage_system' => true,
-            'sm_manage_users' => true,
-            'sm_manage_members' => true,
-            'sm_manage_finance' => true,
-            'sm_manage_licenses' => true,
-            'sm_print_reports' => true,
-            'sm_full_access' => true
-        );
-
-        // 1. System Manager (مدير النظام)
-        if (!get_role('sm_system_admin')) {
-            add_role('sm_system_admin', 'مدير النظام', $sm_capabilities);
-        } else {
-            $role = get_role('sm_system_admin');
-            foreach ($sm_capabilities as $cap => $grant) {
-                $role->add_cap($cap, $grant);
+        // Clear old custom roles first to ensure a clean slate
+        $old_roles = ['sm_system_admin', 'sm_syndicate_admin', 'sm_syndicate_member', 'sm_officer', 'sm_member', 'sm_parent', 'sm_student'];
+        foreach ($old_roles as $old_role) {
+            if (get_role($old_role)) {
+                remove_role($old_role);
             }
         }
 
-        // Ensure WordPress Administrator has all SM capabilities
+        // Capability Definitions
+        $all_caps = array(
+            'read' => true,
+            'sm_manage_system' => true,  // Advanced settings, resets, etc.
+            'sm_manage_users' => true,   // System staff management
+            'sm_manage_members' => true, // View/Edit members
+            'sm_manage_finance' => true, // Financial operations
+            'sm_manage_licenses' => true,
+            'sm_print_reports' => true,
+            'sm_full_access' => true,    // Global view (across all branches)
+            'sm_branch_access' => true,  // Restricted to assigned branch
+            'sm_manage_archive' => true
+        );
+
+        // 1. System Administrator (Inherits administrator + all plugin caps)
         $admin_role = get_role('administrator');
         if ($admin_role) {
-            foreach ($sm_capabilities as $cap => $grant) {
+            foreach ($all_caps as $cap => $grant) {
                 $admin_role->add_cap($cap, $grant);
             }
         }
 
-        // Add specific caps for Digital Archive
-        $admin_role->add_cap('sm_manage_archive', true);
-        if (get_role('sm_system_admin')) get_role('sm_system_admin')->add_cap('sm_manage_archive', true);
-        if (get_role('sm_syndicate_admin')) get_role('sm_syndicate_admin')->add_cap('sm_manage_archive', true);
-
-        // 2. Syndicate Administrator (مسؤول نقابة)
-        $syndicate_admin_caps = array(
+        // 2. General Syndicate Officer (مسؤول النقابة العامة)
+        // Full access to plugin, NO advanced settings, Global view
+        $general_officer_caps = array(
             'read' => true,
-            'sm_manage_system' => true,
             'sm_manage_members' => true,
             'sm_manage_finance' => true,
             'sm_manage_licenses' => true,
-            'sm_print_reports' => true
+            'sm_print_reports' => true,
+            'sm_full_access' => true,
+            'sm_manage_archive' => true
         );
-        if (!get_role('sm_syndicate_admin')) {
-            add_role('sm_syndicate_admin', 'مسؤول نقابة', $syndicate_admin_caps);
-        } else {
-            $role = get_role('sm_syndicate_admin');
-            foreach ($syndicate_admin_caps as $cap => $grant) {
-                $role->add_cap($cap, $grant);
-            }
-        }
+        add_role('sm_general_officer', 'مسؤول النقابة العامة', $general_officer_caps);
 
-        // 3. Syndicate Member (عضو نقابة) - Restricted to personal profile
-        if (!get_role('sm_syndicate_member')) {
-            add_role('sm_syndicate_member', 'عضو نقابة', array('read' => true));
-        }
+        // 3. Branch Syndicate Officer (مسؤول نقابة)
+        // Access restricted to their branch ONLY
+        $branch_officer_caps = array(
+            'read' => true,
+            'sm_manage_members' => true,
+            'sm_manage_finance' => true,
+            'sm_manage_licenses' => true,
+            'sm_print_reports' => true,
+            'sm_branch_access' => true
+        );
+        add_role('sm_branch_officer', 'مسؤول نقابة', $branch_officer_caps);
+
+        // 4. Syndicate Member (عضو النقابة)
+        // Personal data only
+        add_role('sm_member', 'عضو النقابة', array('read' => true));
 
         self::migrate_user_roles();
         self::sync_missing_member_accounts();
@@ -924,7 +925,7 @@ class SM_Activator {
                 'user_email' => $m->email ?: $m->national_id . '@irseg.org',
                 'display_name' => $m->name,
                 'user_pass' => null,
-                'role' => 'sm_syndicate_member'
+                'role' => 'sm_member'
             ]);
             if (!is_wp_error($user_id)) {
                 if (!empty($m->governorate)) {
@@ -1078,16 +1079,16 @@ class SM_Activator {
 
     private static function migrate_user_roles() {
         $role_migration = array(
-            'sm_system_admin'       => 'sm_system_admin',
-            'sm_officer'            => 'sm_syndicate_admin',
-            'sm_syndicate_admin'    => 'sm_syndicate_admin',
-            'sm_syndicate_member'   => 'sm_syndicate_member',
-            'sm_member'             => 'sm_syndicate_member',
-            'sm_parent'             => 'sm_syndicate_member',
-            'sm_principal'          => 'sm_syndicate_admin',
-            'school_admin'          => 'sm_syndicate_admin',
-            'sm_school_admin'       => 'sm_syndicate_admin',
-            'sm_student'            => 'sm_syndicate_member'
+            'sm_system_admin'       => 'sm_general_officer',
+            'sm_officer'            => 'sm_branch_officer',
+            'sm_syndicate_admin'    => 'sm_branch_officer',
+            'sm_syndicate_member'   => 'sm_member',
+            'sm_member'             => 'sm_member',
+            'sm_parent'             => 'sm_member',
+            'sm_principal'          => 'sm_general_officer',
+            'school_admin'          => 'sm_general_officer',
+            'sm_school_admin'       => 'sm_general_officer',
+            'sm_student'            => 'sm_member'
         );
 
         foreach ($role_migration as $old => $new) {

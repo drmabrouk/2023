@@ -13,7 +13,7 @@ class SM_Public {
     }
 
     public function hide_admin_bar_for_non_admins($show) {
-        return current_user_can('administrator') ? $show : false;
+        return current_user_can('manage_options') ? $show : false;
     }
 
     public function restrict_admin_access() {
@@ -24,10 +24,11 @@ class SM_Public {
                 exit;
             }
         }
+        // Site Manager (administrator) is the only role allowed in WP Core Admin
         if (is_admin() && !defined('DOING_AJAX') && !current_user_can('manage_options')) {
             $user = wp_get_current_user();
             $roles = (array)$user->roles;
-            $is_member = in_array('sm_syndicate_member', $roles) || in_array('sm_member', $roles);
+            $is_member = in_array('sm_member', $roles);
             wp_redirect(home_url($is_member ? '/my-account' : '/dashboard'));
             exit;
         }
@@ -38,13 +39,13 @@ class SM_Public {
 
         $user = wp_get_current_user();
         $roles = (array)$user->roles;
-        $is_admin_or_manager = in_array('sm_system_admin', $roles) || in_array('sm_syndicate_admin', $roles) || in_array('administrator', $roles);
-        $is_member = in_array('sm_syndicate_member', $roles) || in_array('sm_member', $roles);
+        $is_officer = in_array('sm_general_officer', $roles) || in_array('sm_branch_officer', $roles) || in_array('administrator', $roles);
+        $is_member = in_array('sm_member', $roles);
 
         global $wp;
         $current_path = trim($wp->request, '/');
 
-        if ($is_admin_or_manager) {
+        if ($is_officer) {
             if ($current_path === 'my-account' || $current_path === 'sm-admin') {
                 wp_redirect(add_query_arg($_GET, home_url('/dashboard')));
                 exit;
@@ -59,7 +60,7 @@ class SM_Public {
 
     public function custom_login_redirect($redirect_to, $request, $user) {
         if (isset($user->roles) && is_array($user->roles)) {
-            if (in_array('administrator', $user->roles) || in_array('sm_system_admin', $user->roles) || in_array('sm_syndicate_admin', $user->roles)) {
+            if (in_array('administrator', $user->roles) || in_array('sm_general_officer', $user->roles) || in_array('sm_branch_officer', $user->roles)) {
                 return home_url('/dashboard');
             } else {
                 return home_url('/my-account');
@@ -469,6 +470,20 @@ class SM_Public {
             update_option('sm_verify_success_msg', sanitize_text_field($_POST['sm_verify_success_msg']));
 
             wp_redirect(add_query_arg(['sm_tab' => 'advanced-settings', 'sub' => 'verification', 'settings_saved' => 1], wp_get_referer()));
+            exit;
+        }
+
+        if (isset($_POST['sm_save_role_permissions'])) {
+            check_admin_referer('sm_admin_action', 'sm_admin_nonce');
+            if (!current_user_can('sm_manage_system')) wp_die('Unauthorized');
+
+            $perms = SM_Settings::get_role_permissions();
+            foreach (['sm_general_officer', 'sm_branch_officer', 'sm_member'] as $role) {
+                $perms[$role]['modules'] = isset($_POST['perms'][$role]['modules']) ? array_map('sanitize_text_field', $_POST['perms'][$role]['modules']) : [];
+                $perms[$role]['actions'] = isset($_POST['perms'][$role]['actions']) ? array_map('sanitize_text_field', $_POST['perms'][$role]['actions']) : [];
+            }
+            SM_Settings::save_role_permissions($perms);
+            wp_redirect(add_query_arg(['sm_tab' => 'advanced-settings', 'sub' => 'permissions', 'settings_saved' => 1], wp_get_referer()));
             exit;
         }
     }

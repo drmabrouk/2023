@@ -16,8 +16,7 @@ class SM_Auth {
     public static function shortcode_login() {
         if (is_user_logged_in()) {
             $user = wp_get_current_user();
-            $roles = (array)$user->roles;
-            $is_member = in_array('sm_syndicate_member', $roles) || in_array('sm_member', $roles);
+            $is_member = in_array('sm_member', (array)$user->roles);
             wp_redirect(home_url($is_member ? '/my-account' : '/dashboard'));
             exit;
         }

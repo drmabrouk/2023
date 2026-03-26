@@ -268,7 +268,7 @@ class SM_DB_Members {
                 'user_email' => $email ?: $national_id . '@irseg.org',
                 'display_name' => $name,
                 'user_pass' => '', // Account needs activation/password set
-                'role' => 'sm_syndicate_member'
+                'role' => 'sm_member'
             ));
         }
 
@@ -596,12 +596,11 @@ class SM_DB_Members {
     public static function get_update_requests($status = 'pending') {
         global $wpdb;
         $user = wp_get_current_user();
-        $is_officer = in_array('sm_syndicate_admin', (array)$user->roles) || in_array('sm_syndicate_member', (array)$user->roles);
         $has_full_access = current_user_can('sm_full_access') || current_user_can('manage_options');
         $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
 
         $where = $wpdb->prepare("r.status = %s", $status);
-        if ($is_officer && !$has_full_access && $my_gov) {
+        if (!$has_full_access && $my_gov) {
             $where .= $wpdb->prepare(" AND m.governorate = %s", $my_gov);
         }
 
@@ -617,12 +616,11 @@ class SM_DB_Members {
     public static function count_pending_update_requests() {
         global $wpdb;
         $user = wp_get_current_user();
-        $is_officer = in_array('sm_syndicate_admin', (array)$user->roles) || in_array('sm_syndicate_member', (array)$user->roles);
         $has_full_access = current_user_can('sm_full_access') || current_user_can('manage_options');
         $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
 
         $where = "r.status = 'pending'";
-        if ($is_officer && !$has_full_access && $my_gov) {
+        if (!$has_full_access && $my_gov) {
             $where .= $wpdb->prepare(" AND m.governorate = %s", $my_gov);
         }
 

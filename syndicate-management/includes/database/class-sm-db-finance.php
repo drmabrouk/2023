@@ -82,7 +82,6 @@ class SM_DB_Finance {
         if ($cached !== false && empty($filters['no_cache'])) return $cached;
 
         $stats = array();
-        $is_officer = in_array('sm_syndicate_admin', (array)$user->roles);
 
         $where_member = "1=1";
         if ($target_gov) {
@@ -103,8 +102,9 @@ class SM_DB_Finance {
             "SELECT COUNT(*) FROM {$wpdb->prefix}users u
              JOIN {$wpdb->prefix}usermeta um1 ON u.ID = um1.user_id AND um1.meta_key = '{$wpdb->prefix}capabilities'
              JOIN {$wpdb->prefix}usermeta um2 ON u.ID = um2.user_id AND um2.meta_key = 'sm_rank'
-             WHERE um1.meta_value LIKE %s AND um2.meta_value != ''",
-            '%"sm_syndicate_admin"%'
+             WHERE (um1.meta_value LIKE %s OR um1.meta_value LIKE %s) AND um2.meta_value != ''",
+            '%"sm_branch_officer"%',
+            '%"sm_general_officer"%'
         ));
 
         // Total Revenue

@@ -45,7 +45,7 @@ class SM_Admin {
             'sm-dashboard',
             'أعضاء النقابة',
             'أعضاء النقابة',
-            'sm_full_access',
+            'sm_manage_users',
             'sm-staff',
             array($this, 'display_staff_page')
         );
@@ -63,7 +63,7 @@ class SM_Admin {
             'sm-dashboard',
             'إعدادات النظام',
             'إعدادات النظام',
-            'sm_manage_system',
+            'sm_manage_members',
             'sm-settings',
             array($this, 'display_settings')
         );
@@ -72,7 +72,7 @@ class SM_Admin {
             'sm-dashboard',
             'الإعدادات المتقدمة',
             'الإعدادات المتقدمة',
-            'sm_full_access',
+            'sm_manage_system',
             'sm-advanced',
             array($this, 'display_advanced_settings')
         );

@@ -1,8 +1,7 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <?php
 $user = wp_get_current_user();
-$roles = (array)$user->roles;
-$is_official = in_array('sm_syndicate_admin', $roles) || in_array('sm_system_admin', $roles) || in_array('administrator', $roles);
+$is_official = current_user_can('sm_manage_members');
 
 $member_id = 0;
 $member_by_wp = SM_DB_Members::get_member_by_wp_user_id($user->ID);

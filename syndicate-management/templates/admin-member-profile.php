@@ -9,13 +9,12 @@ if (!$member) {
 }
 
 $user = wp_get_current_user();
-$is_admin = in_array('administrator', (array)$user->roles) || current_user_can('manage_options');
-$is_sys_manager = in_array('sm_system_admin', (array)$user->roles) || $is_admin;
-$is_syndicate_admin = in_array('sm_syndicate_admin', (array)$user->roles);
-$is_syndicate_member = in_array('sm_syndicate_member', (array)$user->roles);
+$is_admin = current_user_can('administrator') || current_user_can('manage_options');
+$is_sys_manager = current_user_can('sm_manage_system');
+$is_syndicate_admin = current_user_can('sm_branch_access') && !current_user_can('sm_full_access');
+$is_general_officer = current_user_can('sm_full_access') && !current_user_can('sm_manage_system');
 $is_member = in_array('sm_member', (array)$user->roles);
-$is_syndicate_staff = $is_syndicate_member;
-$is_restricted = ($is_member || $is_syndicate_member) && !current_user_can('sm_manage_members');
+$is_restricted = !current_user_can('sm_manage_members');
 
 $db_branches = SM_DB::get_branches_data();
 
@@ -85,7 +84,7 @@ $acc_status = SM_Finance::get_member_status($member->id);
                 </div>
             </div>
 
-            <?php if (!$is_syndicate_staff || current_user_can('sm_print_reports')): ?>
+            <?php if (current_user_can('sm_print_reports')): ?>
                 <a href="<?php echo admin_url('admin-ajax.php?action=sm_print&print_type=id_card&member_id='.$member->id); ?>" target="_blank" class="sm-btn" style="background: #27ae60; width: auto; text-decoration:none; display:flex; align-items:center; gap:8px;"><span class="dashicons dashicons-id-alt"></span> طباعة الكارنيه</a>
             <?php endif; ?>
             <?php if ($is_sys_manager): ?>
