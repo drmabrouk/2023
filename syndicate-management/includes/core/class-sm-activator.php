@@ -834,7 +834,7 @@ class SM_Activator {
         }
 
         // 2. General Syndicate Officer (مسؤول النقابة العامة)
-        // Full access to plugin, NO advanced settings, Global view
+        // Full access to plugin sections, Global view
         $general_officer_caps = array(
             'read' => true,
             'sm_manage_members' => true,
@@ -842,7 +842,9 @@ class SM_Activator {
             'sm_manage_licenses' => true,
             'sm_print_reports' => true,
             'sm_full_access' => true,
-            'sm_manage_archive' => true
+            'sm_manage_archive' => true,
+            'sm_manage_users' => true,
+            'sm_manage_system' => true
         );
         add_role('sm_general_officer', 'مسؤول النقابة العامة', $general_officer_caps);
 
@@ -854,7 +856,8 @@ class SM_Activator {
             'sm_manage_finance' => true,
             'sm_manage_licenses' => true,
             'sm_print_reports' => true,
-            'sm_branch_access' => true
+            'sm_branch_access' => true,
+            'sm_manage_archive' => true
         );
         add_role('sm_branch_officer', 'مسؤول نقابة', $branch_officer_caps);
 

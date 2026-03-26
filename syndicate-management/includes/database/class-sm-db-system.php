@@ -159,17 +159,41 @@ class SM_DB_System {
 
     public static function get_pub_documents($args = []) {
         global $wpdb;
+        $user = wp_get_current_user();
+        $has_full_access = current_user_can('sm_full_access') || current_user_can('manage_options');
+        $my_gov = get_user_meta($user->ID, 'sm_governorate', true);
+
         $where = "1=1";
-        if (!empty($args['search'])) {
-            $where .= $wpdb->prepare(" AND (d.title LIKE %s OR d.serial_number LIKE %s)", '%' . $wpdb->esc_like($args['search']) . '%', '%' . $wpdb->esc_like($args['search']) . '%');
+        $params = [];
+        $join = "";
+
+        if (!$has_full_access && $my_gov) {
+            // Filter by creator's governorate or member's governorate
+            $join = "LEFT JOIN {$wpdb->prefix}sm_members m ON d.member_id = m.id";
+            $where .= " AND m.governorate = %s";
+            $params[] = $my_gov;
         }
-        return $wpdb->get_results("
+
+        if (!empty($args['search'])) {
+            $s = '%' . $wpdb->esc_like($args['search']) . '%';
+            $where .= " AND (d.title LIKE %s OR d.serial_number LIKE %s)";
+            $params[] = $s;
+            $params[] = $s;
+        }
+
+        $query = "
             SELECT d.*, u.display_name as creator_name
             FROM {$wpdb->prefix}sm_pub_documents d
             LEFT JOIN {$wpdb->prefix}users u ON d.created_by = u.ID
+            $join
             WHERE $where
             ORDER BY d.created_at DESC
-        ");
+        ";
+
+        if (!empty($params)) {
+            return $wpdb->get_results($wpdb->prepare($query, ...$params));
+        }
+        return $wpdb->get_results($query);
     }
 
     public static function get_pub_document_by_id($id) {

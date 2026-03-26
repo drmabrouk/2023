@@ -405,11 +405,11 @@ class SM_Settings {
     public static function get_role_permissions() {
         $default = array(
             'sm_general_officer' => array(
-                'modules' => array('members', 'finance', 'licenses', 'services', 'education', 'messaging', 'archive'),
+                'modules' => array('members', 'finance', 'licenses', 'services', 'education', 'messaging', 'archive', 'system'),
                 'actions' => array('add_member', 'edit_member', 'delete_member', 'record_payment', 'issue_license', 'print_reports')
             ),
             'sm_branch_officer' => array(
-                'modules' => array('members', 'finance', 'licenses', 'services', 'education', 'messaging'),
+                'modules' => array('members', 'finance', 'licenses', 'services', 'education', 'messaging', 'archive'),
                 'actions' => array('add_member', 'edit_member', 'record_payment', 'print_reports')
             ),
             'sm_member' => array(
