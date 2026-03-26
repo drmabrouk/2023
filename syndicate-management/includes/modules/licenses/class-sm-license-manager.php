@@ -95,6 +95,10 @@ class SM_License_Manager {
 
     public static function ajax_verify_document() {
         try {
+            // This is a public search, but we should still have a nonce if called from our forms
+            if (isset($_REQUEST['nonce'])) {
+                check_ajax_referer('sm_contact_action', 'nonce');
+            }
             $val = trim(sanitize_text_field($_POST['search_value'] ?? ''));
             $type = sanitize_text_field($_POST['search_type'] ?? 'auto');
 
@@ -285,6 +289,7 @@ class SM_License_Manager {
 
     public static function ajax_print_license() {
         if (!current_user_can('sm_print_reports')) { wp_die('Unauthorized'); }
+        check_admin_referer('sm_admin_action', 'nonce');
         $mid = intval($_GET['member_id'] ?? 0);
         if (!$mid || !SM_Member_Manager::can_access_member($mid)) { wp_die('Access denied'); }
         include SM_PLUGIN_DIR . 'templates/print-practice-license.php';
@@ -293,6 +298,7 @@ class SM_License_Manager {
 
     public static function ajax_print_facility() {
         if (!current_user_can('sm_print_reports')) { wp_die('Unauthorized'); }
+        check_admin_referer('sm_admin_action', 'nonce');
         $mid = intval($_GET['member_id'] ?? 0);
         if (!$mid || !SM_Member_Manager::can_access_member($mid)) { wp_die('Access denied'); }
         include SM_PLUGIN_DIR . 'templates/print-facility-license.php';
@@ -301,6 +307,9 @@ class SM_License_Manager {
 
     public static function ajax_verify_suggest() {
         try {
+            if (isset($_REQUEST['nonce'])) {
+                check_ajax_referer('sm_contact_action', 'nonce');
+            }
             $q = sanitize_text_field($_GET['query'] ?? '');
             $type = sanitize_text_field($_GET['type'] ?? 'auto');
             if (strlen($q) < 3) wp_send_json_success([]);

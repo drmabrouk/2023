@@ -329,6 +329,10 @@ class SM_Service_Manager {
     }
 
     public static function ajax_print_service_request() {
+        if (!current_user_can('sm_print_reports')) {
+            wp_die('Unauthorized');
+        }
+        check_admin_referer('sm_admin_action', 'nonce');
         $req = SM_DB_Services::get_service_request_by_id(intval($_GET['id']));
         if (!$req || !SM_Member_Manager::can_access_member($req->member_id)) {
             wp_die('Unauthorized');

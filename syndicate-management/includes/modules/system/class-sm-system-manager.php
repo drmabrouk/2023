@@ -281,6 +281,7 @@ class SM_System_Manager {
             if (!is_user_logged_in()) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_admin_action', 'nonce');
             wp_send_json_success(['pending_reports' => SM_DB::get_pending_reports_count()]);
         } catch (Throwable $e) {
             wp_send_json_error(['message' => 'Critical Error: ' . $e->getMessage()]);
@@ -405,6 +406,7 @@ class SM_System_Manager {
             if (!current_user_can('sm_manage_system') && !current_user_can('manage_options')) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_pub_action', 'nonce');
             $t = SM_DB::get_pub_template(intval($_GET['id']));
             if ($t) {
                 wp_send_json_success($t);
@@ -481,7 +483,6 @@ class SM_System_Manager {
                 check_ajax_referer('sm_pub_action', '_wpnonce');
             }
             if (SM_DB::save_pub_template($_POST)) {
-            wp_send_json_success('Template saved');
                 wp_send_json_success('Template saved');
             } else {
                 wp_send_json_error(['message' => 'Failed to save template']);
@@ -510,6 +511,7 @@ class SM_System_Manager {
         if (!current_user_can('sm_manage_system')) {
             wp_die('Unauthorized');
         }
+        check_admin_referer('sm_pub_action', 'nonce');
         $id = intval($_GET['id']);
         $doc = SM_DB::get_pub_document_by_id($id);
         if (!$doc) {
@@ -523,6 +525,7 @@ class SM_System_Manager {
     public static function ajax_get_branch_details() {
         try {
             if (!is_user_logged_in()) wp_send_json_error(['message' => 'Unauthorized']);
+            check_ajax_referer('sm_admin_action', 'nonce');
             $id = intval($_GET['id']);
         $branch = SM_DB::get_branch_by_id($id);
         if (!$branch) wp_send_json_error(['message' => 'Branch not found']);
@@ -583,6 +586,7 @@ class SM_System_Manager {
             if (!current_user_can('manage_options') && !current_user_can('sm_full_access')) {
                  wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_admin_action', 'nonce');
 
             $upload_dir = wp_upload_dir();
         $dir = $upload_dir['basedir'] . '/sm-backups';
@@ -606,6 +610,7 @@ class SM_System_Manager {
 
     public static function ajax_download_stored_backup() {
         if (!current_user_can('manage_options')) wp_send_json_error(['message' => 'Unauthorized']);
+        check_admin_referer('sm_admin_action', 'nonce');
 
         $filename = sanitize_file_name($_GET['filename'] ?? '');
         if (empty($filename)) wp_send_json_error(['message' => 'Invalid file']);

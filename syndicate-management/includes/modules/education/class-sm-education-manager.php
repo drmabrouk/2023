@@ -294,9 +294,10 @@ class SM_Education_Manager {
 
     public static function ajax_get_survey_results() {
         try {
-            if (!is_user_logged_in()) {
+            if (!current_user_can('sm_manage_system')) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_admin_action', 'nonce');
             wp_send_json_success(SM_DB::get_survey_results(intval($_GET['id'])));
         } catch (Throwable $e) {
             wp_send_json_error(['message' => $e->getMessage()]);
@@ -304,9 +305,10 @@ class SM_Education_Manager {
     }
 
     public static function ajax_export_survey_results() {
-        if (!current_user_can('manage_options')) {
+        if (!current_user_can('manage_options') && !current_user_can('sm_manage_system')) {
             wp_die('Unauthorized');
         }
+        check_admin_referer('sm_admin_action', 'nonce');
         $id = intval($_GET['id']);
         $results = SM_DB::get_survey_results($id);
         header('Content-Type: text/csv');
@@ -327,6 +329,13 @@ class SM_Education_Manager {
             if (!is_user_logged_in()) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            // Nonce check based on context (public test session vs admin view)
+            if (isset($_REQUEST['nonce'])) {
+                check_ajax_referer('sm_admin_action', 'nonce');
+            } elseif (isset($_REQUEST['sm_test_nonce'])) {
+                check_ajax_referer('sm_test_nonce', 'sm_test_nonce');
+            }
+
             $test_id = intval($_GET['test_id']);
         // Capability check: admins or the user assigned to the test
         $can_view = current_user_can('sm_manage_system');

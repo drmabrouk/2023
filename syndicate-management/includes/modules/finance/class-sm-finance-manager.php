@@ -77,6 +77,7 @@ class SM_Finance_Manager {
             if (!is_user_logged_in()) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
+            check_ajax_referer('sm_admin_action', 'nonce');
             $mid = intval($_GET['member_id']);
             self::validate_member_access($mid);
 
@@ -96,6 +97,7 @@ class SM_Finance_Manager {
         if (!current_user_can('sm_manage_finance')) {
             wp_die('Unauthorized');
         }
+        check_admin_referer('sm_admin_action', 'nonce');
         $type = sanitize_text_field($_GET['type']);
         $members = SM_DB::get_members(['limit' => -1]);
 
@@ -140,6 +142,10 @@ class SM_Finance_Manager {
     }
 
     public static function ajax_print_invoice() {
+        if (!is_user_logged_in()) {
+            wp_die('Unauthorized');
+        }
+        check_admin_referer('sm_admin_action', 'nonce');
         $pid = intval($_GET['payment_id'] ?? 0);
         $pmt = SM_DB::get_payment_by_id($pid);
         if (!$pmt || !SM_Member_Manager::can_access_member($pmt->member_id)) {
