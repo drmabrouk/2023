@@ -554,6 +554,7 @@ class SM_Activator {
         self::fix_alerts_schema();
         self::fix_membership_requests_schema();
         self::fix_notification_logs_schema();
+        self::fix_prof_requests_schema();
         self::setup_roles();
         self::seed_notification_templates();
         self::seed_publishing_templates();
@@ -639,6 +640,14 @@ class SM_Activator {
                 ]);
             }
         }
+    }
+
+    private static function fix_prof_requests_schema() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'sm_professional_requests';
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) return;
+
+        $wpdb->query("ALTER TABLE $table_name MODIFY request_type varchar(100) NOT NULL");
     }
 
     private static function fix_membership_requests_schema() {
