@@ -166,22 +166,31 @@ if ($import_results) {
                     $statuses = SM_Settings::get_membership_statuses();
                     foreach ($members as $member):
                         $finance = SM_Finance::calculate_member_dues($member);
+                        $target_user = $member->wp_user_id ? get_userdata($member->wp_user_id) : false;
+                        $member_is_admin_role = $target_user && !empty($target_user->roles) && array_intersect($target_user->roles, ['administrator', 'sm_general_officer', 'sm_branch_officer']);
+
+                        $member_data = (array)$member;
+                        $member_data['is_admin_role'] = $member_is_admin_role;
+                        if ($target_user) {
+                            $member_data['user_login'] = $target_user->user_login;
+                            $member_data['account_status'] = get_user_meta($member->wp_user_id, "sm_account_status", true) ?: "active";
+                        }
                     ?>
                         <tr id="member-row-<?php echo $member->id; ?>">
                             <td><input type="checkbox" class="member-checkbox" value="<?php echo $member->id; ?>"></td>
                             <td style="font-weight: 700; color: var(--sm-primary-color);"><?php echo esc_html($member->national_id); ?></td>
                             <td style="font-weight: 800;"><?php echo esc_html($member->name); ?></td>
-                            <td><?php echo esc_html($grades[$member->professional_grade] ?? $member->professional_grade); ?></td>
-                            <td><?php echo esc_html($specs[$member->specialization] ?? $member->specialization); ?></td>
+                            <td><?php echo $member_is_admin_role ? '<span class="sm-badge sm-badge-high">حساب إداري</span>' : esc_html($grades[$member->professional_grade] ?? $member->professional_grade); ?></td>
+                            <td><?php echo $member_is_admin_role ? '---' : esc_html($specs[$member->specialization] ?? $member->specialization); ?></td>
                             <td><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></td>
-                            <td><?php echo esc_html($member->membership_number); ?></td>
+                            <td><?php echo $member_is_admin_role ? '---' : esc_html($member->membership_number); ?></td>
                             <td style="font-weight:700; color:<?php echo $finance['balance'] > 0 ? '#e53e3e' : '#38a169'; ?>;"><?php echo number_format($finance['balance'], 2); ?></td>
                             <td>
                                 <div style="display: flex; gap: 5px; justify-content: flex-end;">
                                     <?php if (!$is_deleted_view): ?>
                                         <a href="<?php echo add_query_arg('sm_tab', 'member-profile'); ?>&member_id=<?php echo $member->id; ?>" class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; text-decoration:none; display:flex; align-items:center;">عرض</a>
                                         <?php if (SM_Settings::can_role_access(reset(wp_get_current_user()->roles), 'edit_member')): ?>
-                                            <button onclick='editSmMember(<?php echo esc_attr(json_encode($member)); ?>)' class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; color: #2c3e50; border-color: #2c3e50;">تعديل</button>
+                                            <button onclick='editSmMember(<?php echo esc_attr(json_encode($member_data)); ?>)' class="sm-btn sm-btn-outline" style="padding: 4px 10px; font-size: 11px; height: 28px; color: #2c3e50; border-color: #2c3e50;">تعديل</button>
                                         <?php endif; ?>
                                         <?php if ($is_admin_user): ?>
                                             <button onclick='smOpenMemberAccountModal(<?php echo esc_attr(json_encode(["id" => $member->id, "wp_user_id" => $member->wp_user_id, "name" => $member->name, "email" => $member->email])); ?>)' class="sm-btn" style="padding: 4px 10px; font-size: 11px; height: 28px; background: #2c3e50;">الحساب</button>
@@ -315,15 +324,24 @@ if ($import_results) {
                 <input type="hidden" name="member_id" id="edit_member_id_hidden">
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px;">
                     <div class="sm-form-group"><label class="sm-label">الاسم الكامل:</label><input name="name" id="edit_name" type="text" class="sm-input" required></div>
-                    <div class="sm-form-group"><label class="sm-label">الدرجة الوظيفية:</label><select name="professional_grade" id="edit_grade" class="sm-select"><?php foreach (SM_Settings::get_professional_grades() as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
 
-                    <div class="sm-form-group"><label class="sm-label">الجامعة:</label><select name="university" id="edit_university" class="sm-select edit-cascading"><?php foreach(SM_Settings::get_universities() as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">الكلية:</label><select name="faculty" id="edit_faculty" class="sm-select edit-cascading"><?php foreach(SM_Settings::get_faculties() as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">القسم:</label><select name="department" id="edit_department" class="sm-select edit-cascading"><?php foreach(SM_Settings::get_departments() as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">التخصص:</label><select name="specialization" id="edit_spec" class="sm-select edit-cascading"><?php foreach (SM_Settings::get_specializations() as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                    <div class="sm-admin-fields-group" style="display: none;">
+                        <div class="sm-form-group"><label class="sm-label">اسم المستخدم (Username):</label><input type="text" id="edit_username" class="sm-input" readonly style="background:#f8fafc;"></div>
+                    </div>
 
-                    <div class="sm-form-group"><label class="sm-label">فرع الميلاد:</label><input name="province_of_birth" id="edit_birth_prov" type="text" class="sm-input"></div>
-                    <div class="sm-form-group"><label class="sm-label">الدرجة العلمية:</label><select name="academic_degree" id="edit_degree" class="sm-select"><?php foreach (SM_Settings::get_academic_degrees() as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                    <div class="sm-form-group"><label class="sm-label">البريد الإلكتروني:</label><input name="email" id="edit_email" type="email" class="sm-input"></div>
+                    <div class="sm-form-group"><label class="sm-label">رقم الهاتف:</label><input name="phone" id="edit_phone_input" type="text" class="sm-input"></div>
+
+                    <div class="sm-admin-fields-group" style="display: none;">
+                        <div class="sm-form-group">
+                            <label class="sm-label">حالة الحساب:</label>
+                            <select name="account_status" id="edit_account_status" class="sm-select">
+                                <option value="active">نشط</option>
+                                <option value="restricted">مقيد / موقوف</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="sm-form-group"><label class="sm-label">الفرع:</label><select name="governorate" id="edit_gov" class="sm-select"><?php
                         $db_branches = SM_DB::get_branches_data();
                         if (!empty($db_branches)) {
@@ -332,8 +350,18 @@ if ($import_results) {
                             foreach (SM_Settings::get_governorates() as $k => $v) echo "<option value='$k'>$v</option>";
                         }
                     ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">تاريخ بدء العضوية:</label><input name="membership_start_date" id="edit_mem_start_input" type="date" class="sm-input" onchange="smCalculateDateExpiry('edit_mem_start_input', 'edit_mem_expiry_input')"></div>
-                    <div class="sm-form-group"><label class="sm-label">تاريخ انتهاء العضوية:</label><input name="membership_expiration_date" id="edit_mem_expiry_input" type="date" class="sm-input"></div>
+
+                    <div class="sm-membership-fields-group" style="display: contents;">
+                        <div class="sm-form-group"><label class="sm-label">الدرجة الوظيفية:</label><select name="professional_grade" id="edit_grade" class="sm-select"><?php foreach (SM_Settings::get_professional_grades() as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">الجامعة:</label><select name="university" id="edit_university" class="sm-select edit-cascading"><?php foreach(SM_Settings::get_universities() as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">الكلية:</label><select name="faculty" id="edit_faculty" class="sm-select edit-cascading"><?php foreach(SM_Settings::get_faculties() as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">القسم:</label><select name="department" id="edit_department" class="sm-select edit-cascading"><?php foreach(SM_Settings::get_departments() as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">التخصص:</label><select name="specialization" id="edit_spec" class="sm-select edit-cascading"><?php foreach (SM_Settings::get_specializations() as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">فرع الميلاد:</label><input name="province_of_birth" id="edit_birth_prov" type="text" class="sm-input"></div>
+                        <div class="sm-form-group"><label class="sm-label">الدرجة العلمية:</label><select name="academic_degree" id="edit_degree" class="sm-select"><?php foreach (SM_Settings::get_academic_degrees() as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">تاريخ بدء العضوية:</label><input name="membership_start_date" id="edit_mem_start_input" type="date" class="sm-input" onchange="smCalculateDateExpiry('edit_mem_start_input', 'edit_mem_expiry_input')"></div>
+                        <div class="sm-form-group"><label class="sm-label">تاريخ انتهاء العضوية:</label><input name="membership_expiration_date" id="edit_mem_expiry_input" type="date" class="sm-input"></div>
+                    </div>
                 </div>
                 <button type="submit" class="sm-btn">تحديث البيانات</button>
             </form>
@@ -476,8 +504,24 @@ if ($import_results) {
             document.getElementById('edit_degree').value = s.academic_degree || "";
             document.getElementById('edit_birth_prov').value = s.province_of_birth || "";
             document.getElementById('edit_gov').value = s.governorate;
+            document.getElementById('edit_email').value = s.email || "";
+            document.getElementById('edit_phone_input').value = s.phone || "";
             document.getElementById('edit_mem_start_input').value = s.membership_start_date;
             document.getElementById('edit_mem_expiry_input').value = s.membership_expiration_date;
+
+            // Role-based visibility toggle in modal
+            const membershipFields = document.querySelector('.sm-membership-fields-group');
+            const adminFields = document.querySelectorAll('.sm-admin-fields-group');
+
+            if (s.is_admin_role) {
+                if (membershipFields) membershipFields.style.display = 'none';
+                adminFields.forEach(el => el.style.display = 'contents');
+                document.getElementById('edit_username').value = s.user_login || '';
+                document.getElementById('edit_account_status').value = s.account_status || 'active';
+            } else {
+                if (membershipFields) membershipFields.style.display = 'contents';
+                adminFields.forEach(el => el.style.display = 'none');
+            }
 
             // Enable cascading fields if values exist
             const fac = document.getElementById('edit_faculty');
