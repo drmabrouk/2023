@@ -63,7 +63,7 @@ class SM_Admin {
             'sm-dashboard',
             'إعدادات النظام',
             'إعدادات النظام',
-            'sm_manage_members',
+            'sm_manage_system',
             'sm-settings',
             array($this, 'display_settings')
         );

@@ -149,7 +149,7 @@ $history = SM_Finance::get_payment_history($member->id);
                                 </td>
                                 <td style="font-weight:900; color:#27ae60;"><?php echo number_format($p->amount, 2); ?></td>
                                 <td>
-                                    <a href="<?php echo admin_url('admin-ajax.php?action=sm_print_invoice&payment_id='.$p->id); ?>" target="_blank" class="sm-btn" style="height:26px; padding:0 10px; font-size:10px; width:auto; background:#111F35; display:flex; align-items:center; gap:5px; text-decoration:none;"><span class="dashicons dashicons-pdf" style="font-size:14px;"></span> تحميل</a>
+                                    <a href="<?php echo admin_url('admin-ajax.php?action=sm_print_invoice&payment_id='.$p->id.'&nonce='.wp_create_nonce('sm_admin_action')); ?>" target="_blank" class="sm-btn" style="height:26px; padding:0 10px; font-size:10px; width:auto; background:#111F35; display:flex; align-items:center; gap:5px; text-decoration:none;"><span class="dashicons dashicons-pdf" style="font-size:14px;"></span> تحميل</a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

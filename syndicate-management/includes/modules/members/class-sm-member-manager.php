@@ -54,6 +54,15 @@ class SM_Member_Manager {
             if (!current_user_can('sm_manage_members') && !current_user_can('manage_options')) {
                  wp_send_json_error(['message' => 'Unauthorized access: You lack the "sm_manage_members" capability.']);
             }
+
+            // Role-based Enforcement: Branch Officers can only add to their branch
+            if (!current_user_can('sm_full_access') && !current_user_can('manage_options')) {
+                $my_gov = get_user_meta(get_current_user_id(), 'sm_governorate', true);
+                if ($my_gov) {
+                    $_POST['governorate'] = $my_gov;
+                }
+            }
+
             if (isset($_POST['sm_nonce'])) {
                 check_ajax_referer('sm_add_member', 'sm_nonce');
             } else {

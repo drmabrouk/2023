@@ -64,10 +64,10 @@ class SM_Finance {
         $breakdown = [];
 
         // 1. Membership Dues
-        $p_start = $member->membership_start_date ? strtotime($member->membership_start_date) : false;
+        $p_start = (!empty($member->membership_start_date) && $member->membership_start_date !== '0000-00-00') ? strtotime($member->membership_start_date) : false;
         $start_year = ($p_start !== false && $p_start > 0) ? (int)date('Y', $p_start) : $current_year;
 
-        if ($start_year < 1980 || $start_year > $current_year) {
+        if ($start_year < 1960 || $start_year > $current_year) {
             $start_year = $current_year;
         }
 
@@ -98,7 +98,7 @@ class SM_Finance {
         }
 
         // 2. Professional Practice License Dues
-        if (!empty($member->license_number) && !empty($member->license_expiration_date)) {
+        if (!empty($member->license_number) && !empty($member->license_expiration_date) && $member->license_expiration_date !== '0000-00-00') {
             $exp = $member->license_expiration_date;
             $has_paid = ((int)$member->last_paid_license_year > 0);
 
@@ -131,7 +131,7 @@ class SM_Finance {
         }
 
         // 3. Facility License Dues
-        if (!empty($member->facility_number) && !empty($member->facility_license_expiration_date)) {
+        if (!empty($member->facility_number) && !empty($member->facility_license_expiration_date) && $member->facility_license_expiration_date !== '0000-00-00') {
             $f_exp = $member->facility_license_expiration_date;
             if ($current_date > $f_exp) {
                 $f_cat = $member->facility_category ?: 'C';

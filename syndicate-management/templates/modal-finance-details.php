@@ -145,7 +145,7 @@
                             <td><span class="sm-badge" style="background:#c6f6d5; color:#22543d; font-size:10px;">تم السداد</span></td>
                             <td style="font-weight:700; color:#27ae60;"><?php echo number_format($p->amount, 2); ?></td>
                             <td>
-                                <a href="<?php echo admin_url('admin-ajax.php?action=sm_print_invoice&payment_id='.$p->id); ?>" target="_blank" class="sm-btn" style="height:24px; padding:0 8px; font-size:10px; width:auto; background:#111F35;">عرض الفاتورة</a>
+                                <a href="<?php echo admin_url('admin-ajax.php?action=sm_print_invoice&payment_id='.$p->id.'&nonce='.wp_create_nonce('sm_admin_action')); ?>" target="_blank" class="sm-btn" style="height:24px; padding:0 8px; font-size:10px; width:auto; background:#111F35;">عرض الفاتورة</a>
                             </td>
                         </tr>
                         <?php endforeach; ?>

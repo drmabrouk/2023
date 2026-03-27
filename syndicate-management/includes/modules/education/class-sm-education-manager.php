@@ -274,7 +274,9 @@ class SM_Education_Manager {
             if (!is_user_logged_in()) {
                 wp_send_json_error(['message' => 'Unauthorized']);
             }
-            if (isset($_POST['nonce'])) {
+
+            // Unified nonce check for testing system
+            if (isset($_REQUEST['nonce'])) {
                 check_ajax_referer('sm_test_nonce', 'nonce');
             } else {
                 check_ajax_referer('sm_test_nonce', '_wpnonce');
