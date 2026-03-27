@@ -20,10 +20,10 @@ foreach ($members as $m) {
 ?>
 
 <div class="sm-finance-registry" dir="rtl">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-        <h3 style="margin:0;">إدارة الاستحقاقات المالية</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+        <h2 style="margin:0; font-weight:800; color:var(--sm-dark-color);">إدارة الموارد والاستحقاقات المالية</h2>
         <div style="display:flex; gap:10px;">
-             <button onclick="smOpenPrintCustomizer('finance')" class="sm-btn" style="background: #4a5568; width: auto;"><span class="dashicons dashicons-printer"></span> طباعة مخصصة</button>
+             <button onclick="smOpenPrintCustomizer('finance')" class="sm-btn" style="background: #4a5568; width: auto; height: 42px; padding: 0 20px;"><span class="dashicons dashicons-printer"></span> طباعة مخصصة</button>
              <div class="sm-actions-dropdown" style="position:relative; display:inline-block;">
                 <button class="sm-btn" style="background: #2c3e50; width: auto;"><span class="dashicons dashicons-media-spreadsheet"></span> تقارير الاستحقاقات <span class="dashicons dashicons-arrow-down-alt2" style="font-size: 10px;"></span></button>
                 <div class="sm-actions-content" style="left:0; right:auto;">
@@ -42,6 +42,12 @@ foreach ($members as $m) {
         </div>
     </div>
 
+    <div class="sm-tabs-wrapper" style="display: flex; gap: 5px; margin-bottom: 25px; border-bottom: 2px solid #eee; overflow-x: auto; white-space: nowrap; padding-bottom: 0;">
+        <a href="<?php echo add_query_arg('sm_tab', 'finance'); ?>" class="sm-tab-btn <?php echo $_GET['sm_tab'] == 'finance' ? 'sm-active' : ''; ?>" style="text-decoration:none;">سجل المستحقات والمديونيات</a>
+        <a href="<?php echo add_query_arg('sm_tab', 'financial-logs'); ?>" class="sm-tab-btn <?php echo $_GET['sm_tab'] == 'financial-logs' ? 'sm-active' : ''; ?>" style="text-decoration:none;">سجل العمليات المالية الشامل</a>
+    </div>
+
+    <?php if ($_GET['sm_tab'] === 'finance'): ?>
     <!-- Overall Metrics -->
     <div class="sm-card-grid" style="margin-bottom: 30px;">
         <?php
@@ -144,5 +150,8 @@ foreach ($members as $m) {
             </tbody>
         </table>
     </div>
+    <?php else: ?>
+        <?php include SM_PLUGIN_DIR . 'templates/admin-financial-logs.php'; ?>
+    <?php endif; ?>
 </div>
 

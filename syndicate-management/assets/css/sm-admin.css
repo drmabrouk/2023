@@ -232,16 +232,97 @@
 .sm-badge-medium { background: #FFFAF0; color: #DD6B20; }
 .sm-badge-high { background: #FFF5F5; color: #E53E3E; }
 
-/* Dashboard Header */
-.sm-main-header {
-    background: var(--sm-bg-light);
+/* Dashboard Layout & Header */
+.sm-admin-layout {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    overflow: hidden;
+}
+
+.sm-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--sm-sidebar-bg-color);
+    border-left: 1px solid var(--sm-border-color);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+}
+
+.sm-sidebar-header {
+    padding: 30px 20px;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.sm-sidebar-logo {
+    max-height: 50px;
+    width: auto;
+    margin-bottom: 15px;
+    object-fit: contain;
+}
+
+.sm-sidebar-title {
+    font-size: 1em;
+    font-weight: 800;
+    margin-bottom: 10px;
     color: var(--sm-dark-color);
-    padding: 15px 40px;
+}
+
+.sm-role-capsule {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--sm-primary-color);
+    color: white !important;
+    border-radius: 50px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.sm-main-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sm-main-header {
+    background: transparent !important;
+    color: var(--sm-dark-color);
+    padding: 8px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: var(--sm-shadow);
+    box-shadow: none !important;
     border-bottom: 1px solid var(--sm-border-color);
+    min-height: 60px;
+}
+
+/* Sidebar Items */
+.sm-sidebar-item { border-bottom: 1px solid rgba(0,0,0,0.03); transition: 0.2s; position: relative; }
+.sm-sidebar-link {
+    padding: 12px 25px;
+    cursor: pointer; font-weight: 600; color: #4a5568 !important;
+    display: flex; align-items: center; gap: 12px;
+    text-decoration: none !important;
+    width: 100%;
+    transition: 0.2s;
+    font-size: 14px;
+}
+.sm-sidebar-item:hover { background: rgba(0,0,0,0.02); }
+.sm-sidebar-item.sm-active {
+    background: rgba(0,0,0,0.02) !important;
+}
+.sm-sidebar-item.sm-active > .sm-sidebar-link {
+    color: var(--sm-primary-color) !important;
+    font-weight: 700;
 }
 
 /* Stat Cards */
