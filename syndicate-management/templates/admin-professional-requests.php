@@ -44,7 +44,10 @@ $requests = SM_DB::get_professional_requests($args);
                     'permit_test' => 'دخول اختبار مزاولة',
                     'permit_renewal' => 'تجديد تصريح مزاولة',
                     'facility_new' => 'ترخيص منشأة جديدة',
-                    'facility_renewal' => 'تجديد ترخيص منشأة'
+                    'facility_renewal' => 'تجديد ترخيص منشأة',
+                    'promotion_test_assistant_specialist' => 'طلب ترقية لأخصائي',
+                    'promotion_test_specialist' => 'طلب ترقية لاستشاري',
+                    'promotion_test_consultant' => 'طلب ترقية لخبير'
                 ];
                 if (empty($requests)): ?>
                     <tr><td colspan="6" style="text-align: center; padding: 25px; color: #94a3b8;">لا توجد طلبات حالياً تطابق الفلتر المختار</td></tr>

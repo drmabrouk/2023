@@ -420,6 +420,9 @@ class SM_DB_Members {
             if (isset($data['governorate'])) {
                 update_user_meta($member->wp_user_id, 'sm_governorate', sanitize_text_field($data['governorate']));
             }
+            if (isset($data['account_status'])) {
+                update_user_meta($member->wp_user_id, 'sm_account_status', sanitize_text_field($data['account_status']));
+            }
         }
 
         return $res;

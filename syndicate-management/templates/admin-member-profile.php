@@ -55,10 +55,17 @@ $specs = SM_Settings::get_specializations();
 $govs = SM_Settings::get_governorates();
 $finance = SM_Finance::calculate_member_dues($member);
 $acc_status = SM_Finance::get_member_status($member->id);
+
+// NEW: Identify if the member being viewed has an administrative role
+$target_user = new WP_User($member->wp_user_id);
+$member_is_admin_role = !empty($target_user->roles) && array_intersect($target_user->roles, ['administrator', 'sm_general_officer', 'sm_branch_officer']);
 ?>
 
 <div class="sm-member-profile-view <?php echo $is_restricted ? 'sm-portal-layout' : ''; ?>" dir="rtl">
-    <script>const SM_CURRENT_MEMBER_ID = <?php echo $member->id; ?>;</script>
+    <script>
+        const SM_CURRENT_MEMBER_ID = <?php echo $member->id; ?>;
+        const SM_MEMBER_IS_ADMIN_ROLE = <?php echo $member_is_admin_role ? 'true' : 'false'; ?>;
+    </script>
     <input type="file" id="member-photo-input" style="display:none;" accept="image/*" onchange="smUploadMemberPhoto(<?php echo $member->id; ?>)">
 
     <?php if (!$is_restricted): ?>
@@ -80,14 +87,16 @@ $acc_status = SM_Finance::get_member_status($member->id);
                 <div>
                     <h2 style="margin:0; font-weight:900; color: var(--sm-dark-color);"><?php echo esc_html($member->name); ?></h2>
                     <div style="display: flex; gap: 8px; margin-top: 6px;">
-                        <span class="sm-badge sm-badge-low" style="font-size: 11px;"><?php echo $grades[$member->professional_grade] ?? $member->professional_grade; ?></span>
+                        <?php if (!$member_is_admin_role): ?>
+                            <span class="sm-badge sm-badge-low" style="font-size: 11px;"><?php echo $grades[$member->professional_grade] ?? $member->professional_grade; ?></span>
+                        <?php endif; ?>
                         <span class="sm-badge" style="background: #edf2f7; color: #4a5568; font-size: 11px;"><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></span>
                     </div>
                 </div>
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <?php if (current_user_can('sm_manage_members')): ?>
-                    <button onclick="editSmMember(<?php echo esc_attr(wp_json_encode($member)); ?>)" class="sm-btn" style="background: #3182ce; width: auto; height:42px;"><span class="dashicons dashicons-edit"></span> تعديل البيانات</button>
+                    <button onclick='editSmMember(<?php echo esc_attr(wp_json_encode(array_merge((array)$member, ["is_admin_role" => $member_is_admin_role, "user_login" => $target_user->user_login, "account_status" => get_user_meta($member->wp_user_id, "sm_account_status", true) ?: "active"]))); ?>)' class="sm-btn" style="background: #3182ce; width: auto; height:42px;"><span class="dashicons dashicons-edit"></span> تعديل البيانات</button>
                 <?php endif; ?>
 
                 <div class="sm-dropdown" style="position:relative;">
@@ -128,7 +137,9 @@ $acc_status = SM_Finance::get_member_status($member->id);
                     <h4 style="margin: 0; font-weight: 900; color: var(--sm-dark-color); font-size: 1.1em;"><?php echo esc_html($member->name); ?></h4>
                     <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 10px;">
                         <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;">
-                            <span class="sm-badge sm-badge-low" style="font-size: 10px;"><?php echo $grades[$member->professional_grade] ?? $member->professional_grade; ?></span>
+                            <?php if (!$member_is_admin_role): ?>
+                                <span class="sm-badge sm-badge-low" style="font-size: 10px;"><?php echo $grades[$member->professional_grade] ?? $member->professional_grade; ?></span>
+                            <?php endif; ?>
                             <span class="sm-badge" style="background: #edf2f7; color: #4a5568; font-size: 10px;"><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></span>
                         </div>
                         <div style="font-size: 11px; color: #718096; font-weight: 600;">الرقم القومي: <span style="color:var(--sm-dark-color); font-family:monospace;"><?php echo esc_html($member->national_id); ?></span></div>
@@ -136,12 +147,15 @@ $acc_status = SM_Finance::get_member_status($member->id);
                 </div>
 
                 <nav class="sm-portal-nav" style="display: flex; flex-direction: column; gap: 6px;">
-                    <button class="sm-portal-nav-btn sm-active" onclick="smOpenInternalTab('profile-info', this)"><span class="dashicons dashicons-admin-users"></span> <span>بيانات العضوية</span></button>
-                    <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('license-status-tab', this)"><span class="dashicons dashicons-id-alt"></span> <span>حالة التراخيص</span></button>
-                    <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('finance-management', this)"><span class="dashicons dashicons-money-alt"></span> <span>المالية والاستحقاقات</span></button>
-                    <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('document-vault', this); smLoadDocuments();"><span class="dashicons dashicons-portfolio"></span> <span>الأرشيف الرقمي</span></button>
-                    <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('digital-services-tab', this)"><span class="dashicons dashicons-cloud"></span> <span>الخدمات الرقمية</span></button>
-                    <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('exams-tab', this)"><span class="dashicons dashicons-welcome-learn-more"></span> <span>الاختبارات المهنية</span></button>
+                    <button class="sm-portal-nav-btn sm-active" onclick="smOpenInternalTab('profile-info', this)"><span class="dashicons dashicons-admin-users"></span> <span><?php echo $member_is_admin_role ? 'بيانات الحساب الإداري' : 'بيانات العضوية'; ?></span></button>
+
+                    <?php if (!$member_is_admin_role): ?>
+                        <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('license-status-tab', this)"><span class="dashicons dashicons-id-alt"></span> <span>حالة التراخيص</span></button>
+                        <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('finance-management', this)"><span class="dashicons dashicons-money-alt"></span> <span>المالية والاستحقاقات</span></button>
+                        <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('document-vault', this); smLoadDocuments();"><span class="dashicons dashicons-portfolio"></span> <span>الأرشيف الرقمي</span></button>
+                        <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('digital-services-tab', this)"><span class="dashicons dashicons-cloud"></span> <span>الخدمات الرقمية</span></button>
+                        <button class="sm-portal-nav-btn" onclick="smOpenInternalTab('exams-tab', this)"><span class="dashicons dashicons-welcome-learn-more"></span> <span>الاختبارات المهنية</span></button>
+                    <?php endif; ?>
                 </nav>
             </div>
         </div>
@@ -151,14 +165,17 @@ $acc_status = SM_Finance::get_member_status($member->id);
     <?php else: ?>
         <!-- MANAGEMENT TABS -->
         <div class="sm-tabs-wrapper" style="display: flex; gap: 8px; margin-bottom: 30px; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; overflow-x: auto; white-space: nowrap;">
-            <button class="sm-tab-btn sm-active" onclick="smOpenInternalTab('profile-info', this)"><span class="dashicons dashicons-admin-users"></span> بيانات العضوية</button>
-            <button class="sm-tab-btn" onclick="smOpenInternalTab('professional-requests-tab', this)"><span class="dashicons dashicons-awards"></span> الطلبات المهنية</button>
-            <button class="sm-tab-btn" onclick="smOpenInternalTab('license-status-tab', this)"><span class="dashicons dashicons-id-alt"></span> حالة التراخيص</button>
-            <button class="sm-tab-btn" onclick="smOpenInternalTab('finance-management', this)"><span class="dashicons dashicons-money-alt"></span> المالية والاستحقاقات</button>
-            <button class="sm-tab-btn" onclick="smOpenInternalTab('document-vault', this); smLoadDocuments();"><span class="dashicons dashicons-portfolio"></span> الأرشيف الرقمي</button>
-            <button class="sm-tab-btn" onclick="smOpenInternalTab('messaging-hub-tab', this)"><span class="dashicons dashicons-email"></span> المراسلات والشكاوى</button>
-            <button class="sm-tab-btn" onclick="smOpenInternalTab('digital-services-tab', this)"><span class="dashicons dashicons-cloud"></span> الخدمات الرقمية</button>
-            <button class="sm-tab-btn" onclick="smOpenInternalTab('exams-tab', this)"><span class="dashicons dashicons-welcome-learn-more"></span> الاختبارات المهنية</button>
+            <button class="sm-tab-btn sm-active" onclick="smOpenInternalTab('profile-info', this)"><span class="dashicons dashicons-admin-users"></span> <?php echo $member_is_admin_role ? 'بيانات الحساب' : 'بيانات العضوية'; ?></button>
+
+            <?php if (!$member_is_admin_role): ?>
+                <button class="sm-tab-btn" onclick="smOpenInternalTab('professional-requests-tab', this)"><span class="dashicons dashicons-awards"></span> الطلبات المهنية</button>
+                <button class="sm-tab-btn" onclick="smOpenInternalTab('license-status-tab', this)"><span class="dashicons dashicons-id-alt"></span> حالة التراخيص</button>
+                <button class="sm-tab-btn" onclick="smOpenInternalTab('finance-management', this)"><span class="dashicons dashicons-money-alt"></span> المالية والاستحقاقات</button>
+                <button class="sm-tab-btn" onclick="smOpenInternalTab('document-vault', this); smLoadDocuments();"><span class="dashicons dashicons-portfolio"></span> الأرشيف الرقمي</button>
+                <button class="sm-tab-btn" onclick="smOpenInternalTab('messaging-hub-tab', this)"><span class="dashicons dashicons-email"></span> المراسلات والشكاوى</button>
+                <button class="sm-tab-btn" onclick="smOpenInternalTab('digital-services-tab', this)"><span class="dashicons dashicons-cloud"></span> الخدمات الرقمية</button>
+                <button class="sm-tab-btn" onclick="smOpenInternalTab('exams-tab', this)"><span class="dashicons dashicons-welcome-learn-more"></span> الاختبارات المهنية</button>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -167,58 +184,80 @@ $acc_status = SM_Finance::get_member_status($member->id);
         <div style="display: grid; grid-template-columns: <?php echo $is_restricted ? '1fr' : '2.2fr 1fr'; ?>; gap: 30px;">
             <div style="display: flex; flex-direction: column; gap: 30px;">
 
-                <!-- Group 1: Basic and Academic Information -->
-                <div style="background: #fff; padding: 35px; border-radius: 20px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 25px;">
-                        <h3 style="margin:0; font-weight:900; color:var(--sm-dark-color);"><span class="dashicons dashicons-welcome-learn-more" style="color:var(--sm-primary-color); margin-left:8px;"></span> المعلومات الأساسية والأكاديمية</h3>
-                        <?php if ($is_restricted): ?>
-                            <button onclick="smOpenUpdateMemberRequestModal()" class="sm-btn" style="background: #3182ce; width: auto; height: 34px; font-size: 11px; padding: 0 15px;"><span class="dashicons dashicons-edit" style="font-size: 16px; margin-top: 4px;"></span> طلب تحديث بياناتي</button>
-                        <?php endif; ?>
+                <?php if ($member_is_admin_role): ?>
+                    <!-- Essential Account and Branch Information (For Admins/Officers Only) -->
+                    <div style="background: #fff; padding: 35px; border-radius: 20px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
+                        <h3 style="margin:0 0 25px 0; font-weight:900; color:var(--sm-dark-color); border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"><span class="dashicons dashicons-admin-users" style="color:var(--sm-primary-color); margin-left:8px;"></span> بيانات الحساب والفرع الإدارية</h3>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px;">
+                            <div><label class="sm-label">الاسم الكامل:</label> <div class="sm-value" style="font-weight:800;"><?php echo esc_html($member->name); ?></div></div>
+                            <div><label class="sm-label">اسم المستخدم (Username):</label> <div class="sm-value" style="font-family:monospace;"><?php echo esc_html($target_user->user_login); ?></div></div>
+                            <div><label class="sm-label">البريد الإلكتروني:</label> <div class="sm-value"><?php echo esc_html($member->email); ?></div></div>
+                            <div><label class="sm-label">الفرع النقابي المعين عليه:</label> <div class="sm-value" style="font-weight:800; color:var(--sm-primary-color);"><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></div></div>
+                            <div>
+                                <label class="sm-label">حالة الحساب:</label>
+                                <div class="sm-value">
+                                    <?php $acc_st = get_user_meta($member->wp_user_id, 'sm_account_status', true) ?: 'active'; ?>
+                                    <span class="sm-badge <?php echo $acc_st === 'active' ? 'sm-badge-high' : 'sm-badge-low'; ?>">
+                                        <?php echo $acc_st === 'active' ? 'نشط' : 'مقيد'; ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <!-- Group 1: Basic and Academic Information (Standard Members Only) -->
+                    <div style="background: #fff; padding: 35px; border-radius: 20px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 25px;">
+                            <h3 style="margin:0; font-weight:900; color:var(--sm-dark-color);"><span class="dashicons dashicons-welcome-learn-more" style="color:var(--sm-primary-color); margin-left:8px;"></span> المعلومات الأساسية والأكاديمية</h3>
+                            <?php if ($is_restricted): ?>
+                                <button onclick="smOpenUpdateMemberRequestModal()" class="sm-btn" style="background: #3182ce; width: auto; height: 34px; font-size: 11px; padding: 0 15px;"><span class="dashicons dashicons-edit" style="font-size: 16px; margin-top: 4px;"></span> طلب تحديث بياناتي</button>
+                            <?php endif; ?>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px; margin-bottom: 30px;">
+                            <div><label class="sm-label">الاسم الكامل:</label> <div class="sm-value" style="font-weight:800;"><?php echo esc_html($member->name); ?></div></div>
+                            <div><label class="sm-label">الرقم القومي:</label> <div class="sm-value" style="font-family:monospace;"><?php echo esc_html($member->national_id); ?></div></div>
+                            <div><label class="sm-label">البريد الإلكتروني:</label> <div class="sm-value"><?php echo esc_html($member->email); ?></div></div>
+                        </div>
+
+                        <?php
+                        $univs = SM_Settings::get_universities();
+                        $facs = SM_Settings::get_faculties();
+                        $depts = SM_Settings::get_departments();
+                        $degrees = SM_Settings::get_academic_degrees();
+                        ?>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                            <div><label class="sm-label">الجامعة:</label> <div class="sm-value"><?php echo esc_html($univs[$member->university] ?? $member->university); ?></div></div>
+                            <div><label class="sm-label">الكلية:</label> <div class="sm-value"><?php echo esc_html($facs[$member->faculty] ?? $member->faculty); ?></div></div>
+                            <div><label class="sm-label">تاريخ التخرج:</label> <div class="sm-value"><?php echo esc_html($member->graduation_date); ?></div></div>
+                        </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px; margin-bottom: 30px;">
-                        <div><label class="sm-label">الاسم الكامل:</label> <div class="sm-value" style="font-weight:800;"><?php echo esc_html($member->name); ?></div></div>
-                        <div><label class="sm-label">الرقم القومي:</label> <div class="sm-value" style="font-family:monospace;"><?php echo esc_html($member->national_id); ?></div></div>
-                        <div><label class="sm-label">البريد الإلكتروني:</label> <div class="sm-value"><?php echo esc_html($member->email); ?></div></div>
+                    <!-- Group 2: Residence and Contact Information (Standard Members Only) -->
+                    <div style="background: #fff; padding: 35px; border-radius: 20px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
+                        <h3 style="margin:0 0 25px 0; font-weight:900; color:var(--sm-dark-color); border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"><span class="dashicons dashicons-location" style="color:var(--sm-primary-color); margin-left:8px;"></span> معلومات السكن والاتصال</h3>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px;">
+                            <div><label class="sm-label">المحافظة (فرع السكن):</label> <div class="sm-value"><?php echo esc_html($govs[$member->residence_governorate] ?? $member->residence_governorate); ?></div></div>
+                            <div><label class="sm-label">المدينة / المركز:</label> <div class="sm-value"><?php echo esc_html($member->residence_city); ?></div></div>
+                            <div style="grid-column: span 2;"><label class="sm-label">العنوان التفصيلي:</label> <div class="sm-value"><?php echo esc_html($member->residence_street); ?></div></div>
+                            <div><label class="sm-label">رقم الهاتف الجوال:</label> <div class="sm-value"><?php echo esc_html($member->phone); ?></div></div>
+                            <div><label class="sm-label">الفرع النقابي التابع له:</label> <div class="sm-value"><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></div></div>
+                        </div>
                     </div>
 
-                    <?php
-                    $univs = SM_Settings::get_universities();
-                    $facs = SM_Settings::get_faculties();
-                    $depts = SM_Settings::get_departments();
-                    $degrees = SM_Settings::get_academic_degrees();
-                    ?>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-                        <div><label class="sm-label">الجامعة:</label> <div class="sm-value"><?php echo esc_html($univs[$member->university] ?? $member->university); ?></div></div>
-                        <div><label class="sm-label">الكلية:</label> <div class="sm-value"><?php echo esc_html($facs[$member->faculty] ?? $member->faculty); ?></div></div>
-                        <div><label class="sm-label">تاريخ التخرج:</label> <div class="sm-value"><?php echo esc_html($member->graduation_date); ?></div></div>
+                    <!-- Group 3: Personal and Professional Qualifications (Standard Members Only) -->
+                    <div style="background: #fff; padding: 35px; border-radius: 20px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
+                        <h3 style="margin:0 0 25px 0; font-weight:900; color:var(--sm-dark-color); border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"><span class="dashicons dashicons-awards" style="color:var(--sm-primary-color); margin-left:8px;"></span> المؤهلات الشخصية والمهنية</h3>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px;">
+                            <div><label class="sm-label">الدرجة الوظيفية:</label> <div class="sm-value"><?php echo $grades[$member->professional_grade] ?? $member->professional_grade; ?></div></div>
+                            <div><label class="sm-label">التخصص الدقيق:</label> <div class="sm-value"><?php echo esc_html($specs[$member->specialization] ?? $member->specialization); ?></div></div>
+                            <div><label class="sm-label">الدرجة العلمية:</label> <div class="sm-value"><?php echo esc_html($degrees[$member->academic_degree] ?? $member->academic_degree); ?></div></div>
+                            <div><label class="sm-label">القسم العلمي:</label> <div class="sm-value"><?php echo esc_html($depts[$member->department] ?? $member->department); ?></div></div>
+                            <div><label class="sm-label">الجنس:</label> <div class="sm-value"><?php echo $member->gender === 'male' ? 'ذكر' : 'أنثى'; ?></div></div>
+                            <div><label class="sm-label">تاريخ القيد بالنقابة:</label> <div class="sm-value"><?php echo esc_html($member->registration_date); ?></div></div>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Group 2: Residence and Contact Information -->
-                <div style="background: #fff; padding: 35px; border-radius: 20px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
-                    <h3 style="margin:0 0 25px 0; font-weight:900; color:var(--sm-dark-color); border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"><span class="dashicons dashicons-location" style="color:var(--sm-primary-color); margin-left:8px;"></span> معلومات السكن والاتصال</h3>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px;">
-                        <div><label class="sm-label">المحافظة (فرع السكن):</label> <div class="sm-value"><?php echo esc_html($govs[$member->residence_governorate] ?? $member->residence_governorate); ?></div></div>
-                        <div><label class="sm-label">المدينة / المركز:</label> <div class="sm-value"><?php echo esc_html($member->residence_city); ?></div></div>
-                        <div style="grid-column: span 2;"><label class="sm-label">العنوان التفصيلي:</label> <div class="sm-value"><?php echo esc_html($member->residence_street); ?></div></div>
-                        <div><label class="sm-label">رقم الهاتف الجوال:</label> <div class="sm-value"><?php echo esc_html($member->phone); ?></div></div>
-                        <div><label class="sm-label">الفرع النقابي التابع له:</label> <div class="sm-value"><?php echo esc_html(SM_Settings::get_branch_name($member->governorate)); ?></div></div>
-                    </div>
-                </div>
-
-                <!-- Group 3: Personal and Professional Qualifications -->
-                <div style="background: #fff; padding: 35px; border-radius: 20px; border: 1px solid var(--sm-border-color); box-shadow: var(--sm-shadow);">
-                    <h3 style="margin:0 0 25px 0; font-weight:900; color:var(--sm-dark-color); border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"><span class="dashicons dashicons-awards" style="color:var(--sm-primary-color); margin-left:8px;"></span> المؤهلات الشخصية والمهنية</h3>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px;">
-                        <div><label class="sm-label">الدرجة الوظيفية:</label> <div class="sm-value"><?php echo $grades[$member->professional_grade] ?? $member->professional_grade; ?></div></div>
-                        <div><label class="sm-label">التخصص الدقيق:</label> <div class="sm-value"><?php echo esc_html($specs[$member->specialization] ?? $member->specialization); ?></div></div>
-                        <div><label class="sm-label">الدرجة العلمية:</label> <div class="sm-value"><?php echo esc_html($degrees[$member->academic_degree] ?? $member->academic_degree); ?></div></div>
-                        <div><label class="sm-label">القسم العلمي:</label> <div class="sm-value"><?php echo esc_html($depts[$member->department] ?? $member->department); ?></div></div>
-                        <div><label class="sm-label">الجنس:</label> <div class="sm-value"><?php echo $member->gender === 'male' ? 'ذكر' : 'أنثى'; ?></div></div>
-                        <div><label class="sm-label">تاريخ القيد بالنقابة:</label> <div class="sm-value"><?php echo esc_html($member->registration_date); ?></div></div>
-                    </div>
-                </div>
+                <?php endif; ?>
             </div>
 
             <?php if (!$is_restricted): ?>
@@ -312,18 +351,14 @@ $acc_status = SM_Finance::get_member_status($member->id);
                 <input type="hidden" name="member_id" id="edit_member_id_hidden">
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 25px;">
                     <div class="sm-form-group"><label class="sm-label">الاسم الكامل:</label><input name="name" id="edit_name" type="text" class="sm-input" required></div>
+
+                    <div class="sm-admin-fields-group" style="display: none;">
+                        <div class="sm-form-group"><label class="sm-label">اسم المستخدم (Username):</label><input type="text" id="edit_username" class="sm-input" readonly style="background:#f8fafc;"></div>
+                    </div>
+
                     <div class="sm-form-group"><label class="sm-label">الرقم القومي:</label><input name="national_id" id="edit_national_id" type="text" class="sm-input" required maxlength="14"></div>
-                    <div class="sm-form-group"><label class="sm-label">الدرجة الوظيفية:</label><select name="professional_grade" id="edit_grade" class="sm-select"><?php foreach ($grades as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
 
-                    <div class="sm-form-group"><label class="sm-label">الجامعة:</label><select name="university" id="edit_university" class="sm-select edit-cascading"><?php foreach ($univs as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">الكلية:</label><select name="faculty" id="edit_faculty" class="sm-select edit-cascading"><?php foreach ($facs as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">القسم:</label><select name="department" id="edit_department" class="sm-select edit-cascading"><?php foreach ($depts as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">تاريخ التخرج:</label><input name="graduation_date" id="edit_grad_date" type="date" class="sm-input"></div>
-                    <div class="sm-form-group"><label class="sm-label">الدرجة العلمية:</label><select name="academic_degree" id="edit_degree" class="sm-select"><?php foreach($degrees as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">التخصص:</label><select name="specialization" id="edit_spec" class="sm-select edit-cascading"><?php foreach ($specs as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
-
-                    <div class="sm-form-group"><label class="sm-label">فرع السكن:</label><select name="residence_governorate" id="edit_res_gov" class="sm-select"><?php foreach ($govs as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
-                    <div class="sm-form-group"><label class="sm-label">المدينة / المركز:</label><input name="residence_city" id="edit_res_city" type="text" class="sm-input"></div>
+                    <div class="sm-form-group"><label class="sm-label">البريد الإلكتروني:</label><input name="email" id="edit_email" type="email" class="sm-input"></div>
                     <div class="sm-form-group"><label class="sm-label">الفرع النقابي:</label><select name="governorate" id="edit_gov" class="sm-select"><?php
                         if (!empty($db_branches)) {
                             foreach($db_branches as $db) echo "<option value='".esc_attr($db->slug)."'>".esc_html($db->name)."</option>";
@@ -332,11 +367,31 @@ $acc_status = SM_Finance::get_member_status($member->id);
                         }
                     ?></select></div>
 
-                    <div class="sm-form-group" style="grid-column: span 3;"><label class="sm-label">العنوان (الشارع / القرية):</label><input name="residence_street" id="edit_res_street" type="text" class="sm-input"></div>
-
                     <div class="sm-form-group"><label class="sm-label">رقم الهاتف:</label><input name="phone" id="edit_phone" type="text" class="sm-input"></div>
-                    <div class="sm-form-group"><label class="sm-label">البريد الإلكتروني:</label><input name="email" id="edit_email" type="email" class="sm-input"></div>
-                    <div class="sm-form-group" style="grid-column: span 3;"><label class="sm-label">ملاحظات الإدارة:</label><textarea name="notes" id="edit_notes" class="sm-textarea" rows="2"></textarea></div>
+
+                    <div class="sm-admin-fields-group" style="display: none;">
+                        <div class="sm-form-group">
+                            <label class="sm-label">حالة الحساب:</label>
+                            <select name="account_status" id="edit_account_status" class="sm-select">
+                                <option value="active">نشط</option>
+                                <option value="restricted">مقيد / موقوف</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="sm-membership-fields-group" style="display: contents;">
+                        <div class="sm-form-group"><label class="sm-label">الدرجة الوظيفية:</label><select name="professional_grade" id="edit_grade" class="sm-select"><?php foreach ($grades as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">الجامعة:</label><select name="university" id="edit_university" class="sm-select edit-cascading"><?php foreach ($univs as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">الكلية:</label><select name="faculty" id="edit_faculty" class="sm-select edit-cascading"><?php foreach ($facs as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">القسم:</label><select name="department" id="edit_department" class="sm-select edit-cascading"><?php foreach ($depts as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">تاريخ التخرج:</label><input name="graduation_date" id="edit_grad_date" type="date" class="sm-input"></div>
+                        <div class="sm-form-group"><label class="sm-label">الدرجة العلمية:</label><select name="academic_degree" id="edit_degree" class="sm-select"><?php foreach($degrees as $k=>$v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">التخصص:</label><select name="specialization" id="edit_spec" class="sm-select edit-cascading"><?php foreach ($specs as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">فرع السكن:</label><select name="residence_governorate" id="edit_res_gov" class="sm-select"><?php foreach ($govs as $k => $v) echo "<option value='$k'>$v</option>"; ?></select></div>
+                        <div class="sm-form-group"><label class="sm-label">المدينة / المركز:</label><input name="residence_city" id="edit_res_city" type="text" class="sm-input"></div>
+                        <div class="sm-form-group" style="grid-column: span 3;"><label class="sm-label">العنوان (الشارع / القرية):</label><input name="residence_street" id="edit_res_street" type="text" class="sm-input"></div>
+                        <div class="sm-form-group" style="grid-column: span 3;"><label class="sm-label">ملاحظات الإدارة:</label><textarea name="notes" id="edit_notes" class="sm-textarea" rows="2"></textarea></div>
+                    </div>
                 </div>
                 <div style="padding: 0 25px 25px; text-align:center;">
                     <button type="submit" class="sm-btn" style="width: auto; padding: 0 60px; height: 50px; font-weight: 800;">حفظ البيانات وتحديث السجل</button>
@@ -562,6 +617,20 @@ window.editSmMember = function(s) {
     // Cascade triggers
     const triggerCascade = (sel) => { if(sel.value) sel.disabled = false; };
     [f.faculty, f.department, f.specialization].forEach(triggerCascade);
+
+    // Role-based visibility toggle in modal
+    const membershipFields = document.querySelector('.sm-membership-fields-group');
+    const adminFields = document.querySelectorAll('.sm-admin-fields-group');
+
+    if (s.is_admin_role) {
+        if (membershipFields) membershipFields.style.display = 'none';
+        adminFields.forEach(el => el.style.display = 'contents');
+        document.getElementById('edit_username').value = s.user_login || '';
+        document.getElementById('edit_account_status').value = s.account_status || 'active';
+    } else {
+        if (membershipFields) membershipFields.style.display = 'contents';
+        adminFields.forEach(el => el.style.display = 'none');
+    }
 
     document.getElementById('edit-member-modal').style.display = 'flex';
 };
