@@ -25,12 +25,11 @@ $total_period_amount = array_reduce($payments, function($carry, $item) { return 
 ?>
 
 <div class="sm-financial-logs" dir="rtl">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
         <div>
-            <h3 style="margin:0;">سجل العمليات المالية الشامل</h3>
-            <div style="font-size: 14px; color: #38a169; font-weight: 700; margin-top: 5px;">إجمالي المبالغ في هذه الفترة: <?php echo number_format($total_period_amount, 2); ?> ج.م</div>
+            <div style="font-size: 14px; color: #38a169; font-weight: 700;">إجمالي المبالغ المحصلة في هذه الفترة: <?php echo number_format($total_period_amount, 2); ?> ج.م</div>
         </div>
-        <button onclick="location.reload()" class="sm-btn sm-btn-outline" style="width:auto;"><span class="dashicons dashicons-update"></span> تحديث السجل</button>
+        <button onclick="location.reload()" class="sm-btn sm-btn-outline" style="width:auto; height:36px; font-size:11px;"><span class="dashicons dashicons-update"></span> تحديث السجل</button>
     </div>
 
     <!-- Filtering Bar -->
