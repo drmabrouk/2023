@@ -299,6 +299,15 @@ class SM_Settings {
         );
     }
 
+    public static function get_promotion_test_label($current_grade) {
+        $labels = [
+            'assistant_specialist' => 'أخصائي (Specialist)',
+            'specialist' => 'استشاري (Consultant)',
+            'consultant' => 'خبير (Expert)'
+        ];
+        return $labels[$current_grade] ?? 'درجة أعلى';
+    }
+
     public static function get_governorates() {
         $default = array(
             'cairo' => 'القاهرة',

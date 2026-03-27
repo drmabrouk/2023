@@ -11,6 +11,34 @@ if (in_array('sm_member', (array)wp_get_current_user()->roles)) {
 }
 $active_surveys = SM_DB::get_surveys(get_current_user_id(), $user_role, $member_specialty);
 
+if (empty($active_surveys) && in_array('sm_member', (array)wp_get_current_user()->roles)): ?>
+    <div style="text-align: center; padding: 60px 20px; background: #f8fafc; border: 1px dashed #cbd5e0; border-radius: 20px; margin-bottom: 30px;">
+        <div style="width: 80px; height: 80px; background: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <span class="dashicons dashicons-welcome-learn-more" style="font-size: 40px; width: 40px; height: 40px; color: #94a3b8;"></span>
+        </div>
+        <h3 style="margin: 0; color: #4a5568; font-weight: 800;">لا توجد اختبارات مقررة حالياً</h3>
+        <p style="color: #94a3b8; margin: 10px 0 25px;">لم يتم تعيين أي اختبارات مهنية لحسابك في الوقت الحالي من قبل الإدارة.</p>
+
+        <?php
+        $current_mem = SM_DB_Members::get_member_by_wp_user_id(get_current_user_id());
+        if ($current_mem):
+            $grade = $current_mem->professional_grade;
+            $next_grade = '';
+            if ($grade === 'assistant_specialist') $next_grade = 'Specialist (أخصائي)';
+            elseif ($grade === 'specialist') $next_grade = 'Consultant (استشاري)';
+            elseif ($grade === 'consultant') $next_grade = 'Expert (خبير)';
+
+            if ($next_grade): ?>
+                <div style="background: #fff; padding: 25px; border-radius: 15px; border: 1px solid #e2e8f0; max-width: 400px; margin: 0 auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);">
+                    <h4 style="margin: 0 0 15px; font-weight: 800; color: var(--sm-primary-color);">طلب اختبار ترقية مهنية</h4>
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">درجتك الحالية: <strong><?php echo SM_Settings::get_professional_grades()[$grade] ?? $grade; ?></strong>. يمكنك طلب دخول اختبار الترقية لدرجة <strong><?php echo $next_grade; ?></strong>.</p>
+                    <button onclick="smRequestPromotionTest('<?php echo esc_js($grade); ?>')" class="sm-btn" style="width: 100%; height: 45px; font-weight: 800;">إرسال طلب دخول الاختبار</button>
+                </div>
+            <?php endif;
+        endif; ?>
+    </div>
+<?php endif;
+
 foreach ($active_surveys as $survey):
     // Check if already responded
     $responded = SM_DB_Education::get_user_survey_response_id($survey->id, get_current_user_id());
@@ -412,6 +440,29 @@ function smLogSecurityAction(msg, type) {
     fd.append('details', msg);
     fd.append('nonce', '<?php echo wp_create_nonce("sm_test_nonce"); ?>');
     fetch(ajaxurl + '?action=sm_log_test_action', {method:'POST', body:fd});
+}
+
+function smRequestPromotionTest(currentGrade) {
+    if(!confirm('هل أنت متأكد من رغبتك في طلب اختبار ترقية مهنية؟')) return;
+
+    const fd = new FormData();
+    fd.append('action', 'sm_submit_professional_request');
+    fd.append('request_type', 'promotion_test_' + currentGrade);
+    fd.append('nonce', '<?php echo wp_create_nonce("sm_professional_action"); ?>');
+
+    // Automatically detect member ID if in profile context, otherwise backend will try to match user
+    if (typeof SM_CURRENT_MEMBER_ID !== 'undefined') {
+        fd.append('member_id', SM_CURRENT_MEMBER_ID);
+    }
+
+    fetch(ajaxurl + '?action=sm_submit_professional_request', {method:'POST', body:fd})
+    .then(r=>r.json()).then(res => {
+        if(res.success) {
+            smShowNotification('تم إرسال طلب الاختبار بنجاح للإدارة المختصة.');
+        } else {
+            smHandleAjaxError(res);
+        }
+    }).catch(err => smHandleAjaxError(err));
 }
 
 function smExitTest() {
