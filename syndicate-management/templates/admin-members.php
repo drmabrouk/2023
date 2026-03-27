@@ -101,7 +101,7 @@ if ($import_results) {
 
             <div style="display: flex; gap: 10px;">
                 <button type="submit" class="sm-btn">بحث</button>
-                <a href="<?php echo add_query_arg('sm_tab', 'members', remove_query_arg(['member_search', 'grade_filter', 'spec_filter', 'status_filter'])); ?>" class="sm-btn sm-btn-outline" style="text-decoration:none;">إعادة ضبط</a>
+                <a href="<?php echo add_query_arg('sm_tab', $active_tab, remove_query_arg(['member_search', 'grade_filter', 'spec_filter', 'gov_filter', 'paged'])); ?>" class="sm-btn sm-btn-outline" style="text-decoration:none;">إعادة ضبط</a>
             </div>
         </form>
     </div>
@@ -204,7 +204,11 @@ if ($import_results) {
 
     <!-- Pagination -->
     <?php
-    $total_members = SM_DB::count_members(['search' => $_GET['member_search'] ?? '', 'governorate' => $_GET['gov_filter'] ?? '']);
+    $total_members = SM_DB::count_members([
+        'search' => $_GET['member_search'] ?? '',
+        'governorate' => $_GET['gov_filter'] ?? '',
+        'is_deleted' => $is_deleted_view ? 1 : 0
+    ]);
     $limit = 20;
     $total_pages = ceil($total_members / $limit);
     $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
@@ -264,14 +268,25 @@ if ($import_results) {
                             </select>
                         </div>
                         <div class="sm-form-group">
-                            <select name="governorate" class="sm-select">
+                            <select name="governorate" class="sm-select" required>
                                 <option value="">-- فرع القيد --</option>
                                 <?php
                                 $db_branches = SM_DB::get_branches_data();
+                                $current_user_gov = get_user_meta(get_current_user_id(), 'sm_governorate', true);
+                                $has_full = current_user_can('sm_full_access') || current_user_can('manage_options');
+
                                 if (!empty($db_branches)) {
-                                    foreach($db_branches as $db) echo "<option value='".esc_attr($db->slug)."'>".esc_html($db->name)."</option>";
+                                    foreach($db_branches as $db) {
+                                        $selected = (!$has_full && $current_user_gov === $db->slug) ? 'selected' : '';
+                                        $disabled = (!$has_full && $current_user_gov !== $db->slug) ? 'disabled' : '';
+                                        echo "<option value='".esc_attr($db->slug)."' $selected $disabled>".esc_html($db->name)."</option>";
+                                    }
                                 } else {
-                                    foreach (SM_Settings::get_governorates() as $k => $v) echo "<option value='$k'>$v</option>";
+                                    foreach (SM_Settings::get_governorates() as $k => $v) {
+                                        $selected = (!$has_full && $current_user_gov === $k) ? 'selected' : '';
+                                        $disabled = (!$has_full && $current_user_gov !== $k) ? 'disabled' : '';
+                                        echo "<option value='$k' $selected $disabled>$v</option>";
+                                    }
                                 }
                                 ?>
                             </select>

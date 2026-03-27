@@ -220,6 +220,16 @@ class SM_DB_Members {
 
         $params = [];
 
+        if (!empty($args['professional_grade'])) {
+            $where .= " AND professional_grade = %s";
+            $params[] = $args['professional_grade'];
+        }
+
+        if (!empty($args['specialization'])) {
+            $where .= " AND specialization = %s";
+            $params[] = $args['specialization'];
+        }
+
         if (!$has_full_access) {
             $gov = get_user_meta($user->ID, 'sm_governorate', true);
             if ($gov) {
