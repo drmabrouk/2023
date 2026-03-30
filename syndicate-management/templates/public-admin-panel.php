@@ -937,17 +937,17 @@ $hour = (int)current_time('G');
 $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء الخير';
 ?>
 
-<div class="sm-admin-dashboard" dir="rtl" style="font-family: 'Rubik', sans-serif; background: <?php echo $appearance['bg_color']; ?>; border: 1px solid var(--sm-border-color); border-radius: 12px; overflow: hidden; color: <?php echo $appearance['font_color']; ?>; font-size: <?php echo $appearance['font_size']; ?>; font-weight: <?php echo $appearance['font_weight']; ?>; line-height: <?php echo $appearance['line_spacing']; ?>;">
-    <div class="sm-admin-layout" style="display: flex; min-height: 800px;">
+<div class="sm-admin-dashboard" dir="rtl" style="font-family: 'Rubik', sans-serif; background: <?php echo $appearance['bg_color']; ?>; color: <?php echo $appearance['font_color']; ?>; font-size: <?php echo $appearance['font_size']; ?>; font-weight: <?php echo $appearance['font_weight']; ?>; line-height: <?php echo $appearance['line_spacing']; ?>;">
+    <div class="sm-admin-layout">
         <!-- SIDEBAR -->
         <?php if (!$is_restricted): ?>
-        <div class="sm-sidebar" style="width: 280px; flex-shrink: 0; background: <?php echo $appearance['sidebar_bg_color']; ?>; border-left: 1px solid var(--sm-border-color); display: flex; flex-direction: column;">
+        <div class="sm-sidebar" style="background: <?php echo $appearance['sidebar_bg_color']; ?>;">
             <div class="sm-sidebar-header">
                 <?php if (!empty($syndicate['syndicate_logo'])): ?>
                     <img src="<?php echo esc_url($syndicate['syndicate_logo']); ?>" class="sm-sidebar-logo">
                 <?php else: ?>
-                    <div style="background: #f1f5f9; padding: 15px; border-radius: 12px; width: 60px; height: 60px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
-                        <span class="dashicons dashicons-building" style="font-size: 30px; width: 30px; height: 30px;"></span>
+                    <div style="background: rgba(0,0,0,0.05); padding: 12px; border-radius: 12px; width: 50px; height: 50px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
+                        <span class="dashicons dashicons-building" style="font-size: 24px; width: 24px; height: 24px;"></span>
                     </div>
                 <?php endif; ?>
                 <div class="sm-sidebar-title"><?php echo esc_html($syndicate['syndicate_name']); ?></div>
@@ -1029,14 +1029,14 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
         <?php endif; ?>
 
         <!-- CONTENT AREA -->
-        <div class="sm-main-panel" style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #fff;">
+        <div class="sm-main-panel">
             <!-- OFFICIAL SYSTEM HEADER (Inside Content Area for Non-Restricted) -->
             <?php if (!$is_restricted): ?>
             <div class="sm-main-header">
                 <div></div> <!-- Placeholder for layout -->
 
                 <div style="display: flex; align-items: center; gap: 20px;">
-                    <div style="display: flex; gap: 15px; align-items: center; border-left: 1px solid var(--sm-border-color); padding-left: 20px;">
+                    <div style="display: flex; gap: 15px; align-items: center; border-left: 1px solid rgba(0,0,0,0.05); padding-left: 20px;">
                 <!-- Homepage Icon -->
                 <a href="<?php echo home_url(); ?>" class="sm-header-circle-icon" title="الرئيسية">
                     <span class="dashicons dashicons-admin-home"></span>
@@ -1171,7 +1171,7 @@ $greeting = ($hour >= 5 && $hour < 12) ? 'صباح الخير' : 'مساء ال�
     </div>
     <?php endif; ?>
 
-        <div class="sm-main-panel-content" style="padding: 25px; flex: 1;">
+        <div class="sm-main-panel-content">
 
             <?php
             switch ($active_tab) {

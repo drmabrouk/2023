@@ -50,10 +50,10 @@
 .sm-table-container {
     background: var(--sm-white-color);
     border-radius: var(--sm-radius);
-    border: 1px solid var(--sm-border-color);
+    border: 1px solid rgba(0,0,0,0.05);
     overflow: hidden;
-    margin-bottom: 20px;
-    box-shadow: var(--sm-shadow);
+    margin-bottom: 25px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
 }
 
 .sm-table {
@@ -63,11 +63,14 @@
 }
 
 .sm-table th {
-    background: var(--sm-bg-light);
-    padding: 15px 20px;
+    background: #fcfcfc;
+    padding: 18px 20px;
     font-weight: 700;
-    color: var(--sm-dark-color);
-    border-bottom: 2px solid var(--sm-border-color);
+    color: #64748b;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .sm-table td {
@@ -260,17 +263,21 @@
 }
 
 .sm-sidebar-logo {
-    max-height: 50px;
+    max-height: 45px;
+    max-width: 180px;
     width: auto;
-    margin-bottom: 15px;
+    margin: 0 auto 15px;
     object-fit: contain;
+    display: block;
 }
 
 .sm-sidebar-title {
-    font-size: 1em;
+    font-size: 0.95em;
     font-weight: 800;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     color: var(--sm-dark-color);
+    line-height: 1.4;
+    padding: 0 15px;
 }
 
 .sm-role-capsule {
@@ -288,21 +295,34 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: #fff;
+    background: transparent;
     height: 100vh;
     overflow-y: auto;
 }
 
 .sm-main-header {
-    background: transparent !important;
+    background: rgba(255,255,255,0.4) !important;
     color: var(--sm-dark-color);
-    padding: 8px 25px;
+    padding: 10px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: none !important;
-    border-bottom: 1px solid var(--sm-border-color);
-    min-height: 60px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    min-height: 65px;
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.sm-main-panel-content {
+    padding: 30px;
+    flex: 1;
+    background: #ffffff;
+    border-radius: 20px 0 0 0;
+    box-shadow: -5px -5px 15px rgba(0,0,0,0.02);
 }
 
 /* Sidebar Items */
@@ -328,16 +348,21 @@
 /* Stat Cards */
 .sm-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
 }
 .sm-stat-card {
     background: #fff;
-    padding: 25px;
+    padding: 20px;
     border-radius: var(--sm-radius);
-    border: 1px solid var(--sm-border-color);
-    box-shadow: var(--sm-shadow);
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
     text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.sm-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
 }
 
 /* Tabs */
